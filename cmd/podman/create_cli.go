@@ -258,6 +258,8 @@ func verifyContainerResources(config *cc.CreateConfig, update bool) ([]string, e
 	warnings := []string{}
 	sysInfo := sysinfo.New(true)
 
+	return warnings, nil
+	
 	// memory subsystem checks and adjustments
 	if config.Resources.Memory != 0 && config.Resources.Memory < linuxMinMemory {
 		return warnings, fmt.Errorf("minimum memory limit allowed is 4MB")

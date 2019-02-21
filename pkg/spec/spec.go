@@ -4,6 +4,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"syscall"
 
 	"github.com/containers/libpod/pkg/rootless"
 	"github.com/containers/storage/pkg/mount"
@@ -386,8 +387,14 @@ func CreateConfigToOCISpec(config *CreateConfig) (*spec.Spec, error) { //nolint
 	}
 
 	if rootless.IsRootless() {
-		if addedResources {
-			return nil, errors.New("invalid configuration, cannot set resources with rootless containers")
+		// Don't raise an error if we are using cgroupsv2 unified mode.
+		var st syscall.Statfs_t
+		const CGROUP2_SUPER_MAGIC = 0x63677270
+		if err := syscall.Statfs("/sys/fs/cgroup", &st); err != nil {
+			return nil, errors.Wrapf(err, "cannot statfs /sys/fs/cgroup")
+		}
+		if addedResources && st.Type != CGROUP2_SUPER_MAGIC {
+			return nil, errors.New("invalid configuration, cannot set resources with rootless containers not using cgroups v2 unified mode")
 		}
 		configSpec.Linux.Resources = &spec.LinuxResources{}
 	}

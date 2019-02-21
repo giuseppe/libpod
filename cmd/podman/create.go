@@ -864,6 +864,13 @@ func joinOrCreateRootlessUserNamespace(createConfig *cc.CreateConfig, runtime *l
 			if err != nil {
 				return false, -1, err
 			}
+			s, err := ctr.State()
+			if err != nil {
+				return false, -1, err
+			}
+			if s != libpod.ContainerStateRunning && s != libpod.ContainerStatePaused {
+				return false, -1, errors.Wrapf(err, "the dependency container %s is not running", ctr.ID())
+			}
 			pid, err := ctr.PID()
 			if err != nil {
 				return false, -1, err
