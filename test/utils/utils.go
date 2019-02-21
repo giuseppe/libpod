@@ -61,7 +61,7 @@ func (p *PodmanTest) MakeOptions(args []string) []string {
 
 // PodmanAsUserBase exec podman as user. uid and gid is set for credentials useage. env is used
 // to record the env for debugging
-func (p *PodmanTest) PodmanAsUserBase(args []string, uid, gid uint32, env []string) *PodmanSession {
+func (p *PodmanTest) PodmanAsUserBase(args []string, uid, gid uint32, cwd string, env []string) *PodmanSession {
 	var command *exec.Cmd
 	podmanOptions := p.MakeOptions(args)
 	podmanBinary := p.PodmanBinary
@@ -82,6 +82,9 @@ func (p *PodmanTest) PodmanAsUserBase(args []string, uid, gid uint32, env []stri
 	if env != nil {
 		command.Env = env
 	}
+	if cwd != "" {
+		command.Dir = cwd
+	}
 
 	session, err := gexec.Start(command, GinkgoWriter, GinkgoWriter)
 	if err != nil {
@@ -92,7 +95,7 @@ func (p *PodmanTest) PodmanAsUserBase(args []string, uid, gid uint32, env []stri
 
 // PodmanBase exec podman with default env.
 func (p *PodmanTest) PodmanBase(args []string) *PodmanSession {
-	return p.PodmanAsUserBase(args, 0, 0, nil)
+	return p.PodmanAsUserBase(args, 0, 0, "", nil)
 }
 
 // WaitForContainer waits on a started container
