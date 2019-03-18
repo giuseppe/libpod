@@ -295,6 +295,7 @@ func GetDefaultStoreOptions() (storage.StoreOptions, error) {
 		defaultRootlessRunRoot   string
 		defaultRootlessGraphRoot string
 		err                      error
+		defaultRootlessOptions   []string
 	)
 	storageOpts := storage.DefaultStoreOptions
 	if rootless.IsRootless() {
@@ -308,6 +309,7 @@ func GetDefaultStoreOptions() (storage.StoreOptions, error) {
 	if _, err = os.Stat(storageConf); err == nil {
 		defaultRootlessRunRoot = storageOpts.RunRoot
 		defaultRootlessGraphRoot = storageOpts.GraphRoot
+		defaultRootlessOptions = storageOpts.GraphDriverOptions
 		storageOpts = storage.StoreOptions{}
 		storage.ReloadConfigurationFile(storageConf, &storageOpts)
 	}
@@ -320,6 +322,9 @@ func GetDefaultStoreOptions() (storage.StoreOptions, error) {
 		}
 		if storageOpts.GraphRoot == "" {
 			storageOpts.GraphRoot = defaultRootlessGraphRoot
+		}
+		if storageOpts.GraphDriverOptions == nil {
+			storageOpts.GraphDriverOptions = defaultRootlessOptions
 		}
 	}
 	return storageOpts, nil
