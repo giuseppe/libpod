@@ -309,7 +309,7 @@ func (c *Container) setupStorage(ctx context.Context) error {
 		return errors.Wrapf(err, "error creating container storage")
 	}
 
-	if !rootless.IsRootless() && (len(c.config.IDMappings.UIDMap) != 0 || len(c.config.IDMappings.GIDMap) != 0) {
+	if (len(c.config.IDMappings.UIDMap) != 0 || len(c.config.IDMappings.GIDMap) != 0) {
 		info, err := os.Stat(c.runtime.config.TmpDir)
 		if err != nil {
 			return errors.Wrapf(err, "cannot stat `%s`", c.runtime.config.TmpDir)

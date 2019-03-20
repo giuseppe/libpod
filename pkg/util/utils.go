@@ -188,17 +188,17 @@ func GetRootlessRuntimeDir() (string, error) {
 	uid := fmt.Sprintf("%d", rootless.GetRootlessUID())
 	if runtimeDir == "" {
 		tmpDir := filepath.Join("/run", "user", uid)
-		os.MkdirAll(tmpDir, 0700)
+		os.MkdirAll(tmpDir, 0711)
 		st, err := os.Stat(tmpDir)
-		if err == nil && int(st.Sys().(*syscall.Stat_t).Uid) == os.Geteuid() && st.Mode().Perm() == 0700 {
+		if err == nil && int(st.Sys().(*syscall.Stat_t).Uid) == os.Geteuid() && st.Mode().Perm() == 0711 {
 			runtimeDir = tmpDir
 		}
 	}
 	if runtimeDir == "" {
 		tmpDir := filepath.Join(os.TempDir(), fmt.Sprintf("run-%s", uid))
-		os.MkdirAll(tmpDir, 0700)
+		os.MkdirAll(tmpDir, 0711)
 		st, err := os.Stat(tmpDir)
-		if err == nil && int(st.Sys().(*syscall.Stat_t).Uid) == os.Geteuid() && st.Mode().Perm() == 0700 {
+		if err == nil && int(st.Sys().(*syscall.Stat_t).Uid) == os.Geteuid() && st.Mode().Perm() == 0711 {
 			runtimeDir = tmpDir
 		}
 	}
@@ -212,6 +212,9 @@ func GetRootlessRuntimeDir() (string, error) {
 			return "", errors.Wrapf(err, "cannot resolve %s", home)
 		}
 		runtimeDir = filepath.Join(resolvedHome, "rundir")
+	}
+	if err := os.Chmod(runtimeDir, 0711); err != nil {
+		return "", err
 	}
 	return runtimeDir, nil
 }

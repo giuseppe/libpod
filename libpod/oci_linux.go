@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/containerd/cgroups"
+	"github.com/containers/libpod/pkg/rootless"
 	"github.com/containers/libpod/utils"
 	"github.com/containers/storage/pkg/idtools"
 	spec "github.com/opencontainers/runtime-spec/specs-go"
@@ -74,31 +75,34 @@ func (r *OCIRuntime) createContainer(ctr *Container, cgroupParent string, restor
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		runtime.LockOSThread()
+		if !rootless.IsRootless() {
+			runtime.LockOSThread()
 
-		var fd *os.File
-		fd, err = os.Open(fmt.Sprintf("/proc/%d/task/%d/ns/mnt", os.Getpid(), unix.Gettid()))
-		if err != nil {
-			return
-		}
-		defer fd.Close()
+			var fd *os.File
+			fd, err = os.Open(fmt.Sprintf("/proc/%d/task/%d/ns/mnt", os.Getpid(), unix.Gettid()))
+			if err != nil {
+				return
+			}
+			defer fd.Close()
 
-		// create a new mountns on the current thread
-		if err = unix.Unshare(unix.CLONE_NEWNS); err != nil {
-			return
-		}
-		defer unix.Setns(int(fd.Fd()), unix.CLONE_NEWNS)
+			// create a new mountns on the current thread
+			if err = unix.Unshare(unix.CLONE_NEWNS); err != nil {
+				return
+			}
+			defer unix.Setns(int(fd.Fd()), unix.CLONE_NEWNS)
 
-		// don't spread our mounts around
-		err = unix.Mount("/", "/", "none", unix.MS_REC|unix.MS_SLAVE, "")
-		if err != nil {
-			return
+			// don't spread our mounts around
+			err = unix.Mount("/", "/", "none", unix.MS_REC|unix.MS_SLAVE, "")
+			if err != nil {
+				return
+			}
 		}
+
 		err = unix.Mount(ctr.state.Mountpoint, ctr.state.RealMountpoint, "none", unix.MS_BIND, "")
 		if err != nil {
 			return
 		}
-		if err := idtools.MkdirAllAs(ctr.state.DestinationRunDir, 0700, ctr.RootUID(), ctr.RootGID()); err != nil {
+		if err := idtools.MkdirAllAs(ctr.state.DestinationRunDir, 0711, ctr.RootUID(), ctr.RootGID()); err != nil {
 			return
 		}
 
