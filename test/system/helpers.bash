@@ -55,6 +55,17 @@ function basic_setup() {
     PODMAN_TMPDIR=$(mktemp -d --tmpdir=${BATS_TMPDIR:-/tmp} podman_bats.XXXXXX)
 }
 
+# Check that an unprivileged user cannot read or write to the storage
+function check_no_unprivileged_access() {
+    GRAPH_ROOT=$(run_podman info --format '{{.store.GraphRoot}}')
+    RUN_ROOT=$(run_podman info --format '{{.store.RunRoot}}')
+    find $GRAPH_ROOT $RUN_ROOT -perm -o+w | while read i; do
+        if chroot --userspec 1000:1000 / bash -c 'chmod +w $(dirname "$i"); chmod +w "$i"; cat "$i" || echo hello > "$i" || echo hello > "$i"/test || rm "$i"' 2> /dev/null; then
+            die unprivileged user can access "$i"
+    fi
+done
+}
+
 # Basic teardown: remove all pods and containers
 function basic_teardown() {
     echo "# [teardown]" >&2
