@@ -27,8 +27,6 @@ load helpers
     reported_mountpoint=$(echo "$output" | awk '{print $2}')
     is $reported_mountpoint $mount_path "mountpoint reported by 'podman mount'"
 
-    check_no_unprivileged_access
-
     # umount, and make sure files are gone
     run_podman umount $c_name
     if [ -e "$mount_path/$f_path" ]; then

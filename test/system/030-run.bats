@@ -29,16 +29,6 @@ echo $rand        |   0 | $rand
         run_podman $expected_rc run $IMAGE "$@"
         is "$output" "$expected_output" "podman run $cmd - output"
     done < <(parse_table "$tests")
-
-    check_no_unprivileged_access
-}
-
-@test "podman run - basic tests --uidmapping"  {
-    run_podman --uidmapping 0:10000:10000 run $IMAGE true
-
-    run_podman --uidmapping 0:10000:10000 -v foo:/foo run $IMAGE true
-
-    check_no_unprivileged_access
 }
 
 # vim: filetype=sh
