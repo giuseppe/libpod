@@ -3,6 +3,7 @@ package libpod
 import (
 	"testing"
 
+	"github.com/containers/storage/pkg/idtools"
 	"github.com/stretchr/testify/assert"
 )
 

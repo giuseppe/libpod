@@ -406,6 +406,13 @@ func (c *Container) setupStorage(ctx context.Context) error {
 		return errors.Wrapf(err, "error creating container storage")
 	}
 
+	c.config.IDMappings.UIDMap = containerInfo.UIDMap
+	c.config.IDMappings.GIDMap = containerInfo.GIDMap
+	c.config.ProcessLabel = containerInfo.ProcessLabel
+	c.config.MountLabel = containerInfo.MountLabel
+	c.config.StaticDir = containerInfo.Dir
+	c.state.RunDir = containerInfo.RunDir
+
 	if len(c.config.IDMappings.UIDMap) != 0 || len(c.config.IDMappings.GIDMap) != 0 {
 		if err := os.Chown(containerInfo.RunDir, c.RootUID(), c.RootGID()); err != nil {
 			return err
@@ -415,11 +422,6 @@ func (c *Container) setupStorage(ctx context.Context) error {
 			return err
 		}
 	}
-
-	c.config.ProcessLabel = containerInfo.ProcessLabel
-	c.config.MountLabel = containerInfo.MountLabel
-	c.config.StaticDir = containerInfo.Dir
-	c.state.RunDir = containerInfo.RunDir
 
 	// Set the default Entrypoint and Command
 	if containerInfo.Config != nil {

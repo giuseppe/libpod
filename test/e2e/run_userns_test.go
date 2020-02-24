@@ -4,7 +4,10 @@ package integration
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
+	"os/user"
+	"strings"
 
 	. "github.com/containers/libpod/test/utils"
 	. "github.com/onsi/ginkgo"
@@ -83,6 +86,56 @@ var _ = Describe("Podman UserNS support", func() {
 		Expect(session.ExitCode()).To(Equal(0))
 		uid := fmt.Sprintf("%d", os.Geteuid())
 		ok, _ := session.GrepString(uid)
+		Expect(ok).To(BeTrue())
+	})
+
+	It("podman --userns=auto", func() {
+		u, err := user.Current()
+		Expect(err).To(BeNil())
+
+		content, err := ioutil.ReadFile("/etc/subuid")
+		if err != nil {
+			Skip("cannot read /etc/subuid")
+		}
+		if !strings.Contains(string(content), u.Name) {
+			Skip("cannot find mappings for the current user")
+		}
+
+		m := make(map[string]string)
+		for i := 0; i < 5; i++ {
+			session := podmanTest.Podman([]string{"run", "--userns=auto", "alpine", "cat", "/proc/self/uid_map"})
+			session.WaitWithDefaultTimeout()
+			Expect(session.ExitCode()).To(Equal(0))
+			l := session.OutputToString()
+			Expect(strings.Contains(l, "4096")).To(BeTrue())
+			m[l] = l
+		}
+		// check for no duplicates
+		Expect(len(m)).To(Equal(5))
+	})
+
+	It("podman --userns=auto:size=%d", func() {
+		u, err := user.Current()
+		Expect(err).To(BeNil())
+
+		content, err := ioutil.ReadFile("/etc/subuid")
+		if err != nil {
+			Skip("cannot read /etc/subuid")
+		}
+		if !strings.Contains(string(content), u.Name) {
+			Skip("cannot find mappings for the current user")
+		}
+
+		session := podmanTest.Podman([]string{"run", "--userns=auto:size=500", "alpine", "cat", "/proc/self/uid_map"})
+		session.WaitWithDefaultTimeout()
+		Expect(session.ExitCode()).To(Equal(0))
+		ok, _ := session.GrepString("500")
+
+		session = podmanTest.Podman([]string{"run", "--userns=auto:size=3000", "alpine", "cat", "/proc/self/uid_map"})
+		session.WaitWithDefaultTimeout()
+		Expect(session.ExitCode()).To(Equal(0))
+		ok, _ = session.GrepString("3000")
+
 		Expect(ok).To(BeTrue())
 	})
 

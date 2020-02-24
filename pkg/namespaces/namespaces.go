@@ -1,6 +1,7 @@
 package namespaces
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -92,6 +93,34 @@ func (n UsernsMode) IsKeepID() bool {
 	return n == "keep-id"
 }
 
+// IsAuto indicates whether container uses the "auto" userns mode.
+func (n UsernsMode) IsAuto() bool {
+	parts := strings.Split(string(n), ":")
+	return parts[0] == "auto"
+}
+
+// GetAutoOptions returns a map of the options to use for the "auto" mode.
+func (n UsernsMode) GetAutoOptions() (map[string]string, error) {
+	parts := strings.Split(string(n), ":")
+	if parts[0] != "auto" {
+		return nil, fmt.Errorf("wrong user namespace mode")
+	}
+	options := make(map[string]string)
+	for _, o := range parts[1:] {
+		v := strings.Split(o, "=")
+		if len(v) != 2 {
+			return nil, fmt.Errorf("invalid option specified: %q", o)
+		}
+		switch v[0] {
+		case "size":
+		default:
+			return nil, fmt.Errorf("unknown option specified: %q", v[0])
+		}
+		options[v[0]] = v[1]
+	}
+	return options, nil
+}
+
 // IsPrivate indicates whether the container uses the a private userns.
 func (n UsernsMode) IsPrivate() bool {
 	return !(n.IsHost() || n.IsContainer())
@@ -101,7 +130,7 @@ func (n UsernsMode) IsPrivate() bool {
 func (n UsernsMode) Valid() bool {
 	parts := strings.Split(string(n), ":")
 	switch mode := parts[0]; mode {
-	case "", hostType, "keep-id", nsType:
+	case "", hostType, "keep-id", nsType, "auto":
 	case containerType:
 		if len(parts) != 2 || parts[1] == "" {
 			return false

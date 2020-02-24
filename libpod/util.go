@@ -15,6 +15,8 @@ import (
 	"github.com/containers/libpod/libpod/config"
 	"github.com/containers/libpod/libpod/define"
 	"github.com/containers/libpod/utils"
+	"github.com/containers/storage"
+	"github.com/containers/storage/pkg/idtools"
 	"github.com/fsnotify/fsnotify"
 	spec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
