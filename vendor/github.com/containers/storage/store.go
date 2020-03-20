@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -152,6 +153,10 @@ type StoreOptions struct {
 	// for use inside of a user namespace where UID mapping is being used.
 	UIDMap []idtools.IDMap `json:"uidmap,omitempty"`
 	GIDMap []idtools.IDMap `json:"gidmap,omitempty"`
+	// AutoUIDMap and AutoGIDMap are used to pick a subrange when automatically setting
+	// an user namespace
+	AutoUIDMap []idtools.IDMap `json:"autouidmap,omitempty"`
+	AutoGIDMap []idtools.IDMap `json:"autogidmap,omitempty"`
 }
 
 // Store wraps up the various types of file-based stores that we use into a
@@ -485,6 +490,8 @@ type IDMappingOptions struct {
 	HostGIDMapping bool
 	UIDMap         []idtools.IDMap
 	GIDMap         []idtools.IDMap
+	AutoUserNs     bool
+	AutoUserNsOpts map[string]string
 }
 
 // LayerOptions is used for passing options to a Store's CreateLayer() and PutLayer() methods.
@@ -525,11 +532,14 @@ type store struct {
 	lastLoaded      time.Time
 	runRoot         string
 	graphLock       Locker
+	usernsLock      Locker
 	graphRoot       string
 	graphDriverName string
 	graphOptions    []string
 	uidMap          []idtools.IDMap
 	gidMap          []idtools.IDMap
+	autoUidMap      []idtools.IDMap
+	autoGidMap      []idtools.IDMap
 	graphDriver     drivers.Driver
 	layerStore      LayerStore
 	roLayerStores   []ROLayerStore
@@ -608,6 +618,12 @@ func GetStore(options StoreOptions) (Store, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	usernsLock, err := GetLockfile(filepath.Join(options.GraphRoot, "userns.lock"))
+	if err != nil {
+		return nil, err
+	}
+
 	s := &store{
 		runRoot:         options.RunRoot,
 		graphLock:       graphLock,
@@ -616,6 +632,9 @@ func GetStore(options StoreOptions) (Store, error) {
 		graphOptions:    options.GraphDriverOptions,
 		uidMap:          copyIDMap(options.UIDMap),
 		gidMap:          copyIDMap(options.GIDMap),
+		autoUidMap:      copyIDMap(options.AutoUIDMap),
+		autoGidMap:      copyIDMap(options.AutoGIDMap),
+		usernsLock:      usernsLock,
 	}
 	if err := s.load(); err != nil {
 		return nil, err
@@ -1151,6 +1170,31 @@ func (s *store) CreateContainer(id string, names []string, image, layer, metadat
 
 	var imageTopLayer *Layer
 	imageID := ""
+
+	if options.AutoUserNs || options.UIDMap != nil || options.GIDMap != nil {
+		// Prevent multiple instances to retrieve the same range when AutoUserNs
+		// are used.
+		// It doesn't prevent containers that specify an explicit mapping to overlap
+		// with AutoUserNs.
+		s.usernsLock.Lock()
+		defer s.usernsLock.Unlock()
+	}
+	if options.AutoUserNs {
+		var err error
+		size := -1
+		if val, found := options.AutoUserNsOpts["size"]; found {
+			size, err = strconv.Atoi(val)
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		options.UIDMap, options.GIDMap, err = s.getAutoUserNS(size, image)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	uidMap := options.UIDMap
 	gidMap := options.GIDMap
 
@@ -3405,6 +3449,11 @@ func ReloadConfigurationFile(configFile string, storeOptions *StoreOptions) {
 		fmt.Print(err)
 	} else {
 		storeOptions.GIDMap = append(storeOptions.GIDMap, gidmap...)
+	}
+	storeOptions.AutoUIDMap, storeOptions.AutoGIDMap, err = getAutoUserNsMappings(config.Storage.Options.RootAutoUsernsUser)
+	if err != nil {
+		fmt.Print(err)
+		return
 	}
 
 	storeOptions.GraphDriverOptions = append(storeOptions.GraphDriverOptions, cfg.GetGraphDriverOptions(storeOptions.GraphDriverName, config.Storage.Options)...)

@@ -170,6 +170,10 @@ github.com/ghodss/yaml v0.0.0-20150909031657-73d445a93680/go.mod h1:4dBDuWmgqj2H
 github.com/ghodss/yaml v0.0.0-20161207003320-04f313413ffd/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
 github.com/ghodss/yaml v1.0.0 h1:wQHKEahhL6wmXdzwWG11gIVCkOv05bNOh+Rxn0yngAk=
 github.com/ghodss/yaml v1.0.0/go.mod h1:4dBDuWmgqj2HViK6kFavaiC9ZROes6MMH2rRYeMEF04=
+github.com/giuseppe/storage v0.0.0-20200320224349-17bcf4a44f0d h1:XpQGAVWqFDNAImniQ+KcAwXCxE5fhSpul/yYbKse6vc=
+github.com/giuseppe/storage v0.0.0-20200320224349-17bcf4a44f0d/go.mod h1:09fkjifCCMx24XaLGnRiBl6xbW4Vfol4tGms40SHCL0=
+github.com/giuseppe/storage v0.0.0-20200323123714-1f1c6ce7739c h1:+BtNnNiUlSrG3ijJ2joMQlGs3uEBzbXsPmtwiKck1rQ=
+github.com/giuseppe/storage v0.0.0-20200323123714-1f1c6ce7739c/go.mod h1:09fkjifCCMx24XaLGnRiBl6xbW4Vfol4tGms40SHCL0=
 github.com/go-kit/kit v0.8.0/go.mod h1:xBxKIO96dXMWWy0MnWVtmwkA9/13aqxPnvrjFYMA2as=
 github.com/go-logfmt/logfmt v0.3.0/go.mod h1:Qt1PoO58o5twSAckw1HlFXLmHsOX5/0LbT9GBnD5lWE=
 github.com/go-logfmt/logfmt v0.4.0/go.mod h1:3RMwSq7FuexP4Kalkev3ejPJsZTpXXBr9+V4qmtdjCk=

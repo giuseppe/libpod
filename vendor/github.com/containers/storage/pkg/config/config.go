@@ -134,6 +134,10 @@ type OptionsConfig struct {
 	// should be used to set up default GID mappings.
 	RemapGroup string `toml:"remap-group"`
 
+	// RootAutoUsernsUser is the name of one or more entries in /etc/subuid and
+	// /etc/subgid which should be used to set up automatically an userns.
+	RootAutoUsernsUser string `toml:"root-auto-userns-user"`
+
 	// Aufs container options to be handed to aufs drivers
 	Aufs struct{ AufsOptionsConfig } `toml:"aufs"`
 
