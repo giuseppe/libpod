@@ -1510,7 +1510,7 @@ func (c *Container) getOCICgroupPath() (string, error) {
 			if c.config.CgroupParent != "" {
 				return c.config.CgroupParent, nil
 			}
-			selfCgroup, err := utils.GetPidCgroupv2(0)
+			selfCgroup, err := utils.GetPidCgroup(0)
 			if err != nil {
 				return "", err
 			}

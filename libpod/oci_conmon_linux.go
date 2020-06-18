@@ -881,12 +881,6 @@ func (r *ConmonOCIRuntime) createOCIContainer(ctr *Container, restoreOptions *Co
 		return err
 	}
 
-	if ctr.config.CgroupsMode == conmonDelegated {
-		if err := utils.MoveUnderCgroup2Subtree("supervisor"); err != nil {
-			return err
-		}
-	}
-
 	args := r.sharedConmonArgs(ctr, ctr.ID(), ctr.bundlePath(), filepath.Join(ctr.state.RunDir, "pidfile"), ctr.LogPath(), r.exitsDir, ociLog, ctr.LogDriver(), logTag)
 
 	if ctr.config.Spec.Process.Terminal {
@@ -1252,6 +1246,8 @@ func startCommandGivenSelinux(cmd *exec.Cmd) error {
 // it then signals for conmon to start by sending nonse data down the start fd
 func (r *ConmonOCIRuntime) moveConmonToCgroupAndSignal(ctr *Container, cmd *exec.Cmd, startFd *os.File) error {
 	mustCreateCgroup := true
+	cgroupParent := ctr.CgroupParent()
+	groupManager := r.cgroupManager
 
 	if ctr.config.NoCgroups {
 		mustCreateCgroup = false
@@ -1259,18 +1255,27 @@ func (r *ConmonOCIRuntime) moveConmonToCgroupAndSignal(ctr *Container, cmd *exec
 
 	// If cgroup creation is disabled - just signal.
 	switch ctr.config.CgroupsMode {
-	case "disabled", "no-conmon", conmonDelegated:
+	case "disabled", "no-conmon":
 		mustCreateCgroup = false
+	case conmonDelegated:
+		if cgroupParent == "" {
+			selfCgroup, err := utils.GetPidCgroup(0)
+			if err != nil {
+				logrus.Warnf("Failed to detect cgroup for conmon: %v", err)
+				mustCreateCgroup = false
+			} else {
+	                        cgroupParent = selfCgroup
+			}
+                }
+		groupManager = config.CgroupfsCgroupsManager
+	default:
+		// $INVOCATION_ID is set by systemd when running as a service.
+		if os.Getenv("INVOCATION_ID") != "" {
+			mustCreateCgroup = false
+		}
 	}
-
-	// $INVOCATION_ID is set by systemd when running as a service.
-	if os.Getenv("INVOCATION_ID") != "" {
-		mustCreateCgroup = false
-	}
-
 	if mustCreateCgroup {
-		cgroupParent := ctr.CgroupParent()
-		if r.cgroupManager == config.SystemdCgroupsManager {
+		if groupManager == config.SystemdCgroupsManager {
 			unitName := createUnitName("libpod-conmon", ctr.ID())
 
 			realCgroupParent := cgroupParent
@@ -1284,7 +1289,7 @@ func (r *ConmonOCIRuntime) moveConmonToCgroupAndSignal(ctr *Container, cmd *exec
 				logrus.Warnf("Failed to add conmon to systemd sandbox cgroup: %v", err)
 			}
 		} else {
-			cgroupPath := filepath.Join(ctr.config.CgroupParent, "conmon")
+			cgroupPath := filepath.Join(cgroupParent, "supervisor")
 			control, err := cgroups.New(cgroupPath, &spec.LinuxResources{})
 			if err != nil {
 				logrus.Warnf("Failed to add conmon to cgroupfs sandbox cgroup: %v", err)
