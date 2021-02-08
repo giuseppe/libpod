@@ -10,6 +10,6 @@ import (
 	spec "github.com/opencontainers/runtime-spec/specs-go"
 )
 
-func getSeccompConfig(s *specgen.SpecGenerator, configSpec *spec.Spec, img *image.Image) (*spec.LinuxSeccomp, error) {
-	return nil, errors.New("not implemented")
+func getSeccompConfig(s *specgen.SpecGenerator, configSpec *spec.Spec, img *image.Image) (*spec.LinuxSeccomp, map[string]string, error) {
+	return nil, nil, errors.New("not implemented")
 }

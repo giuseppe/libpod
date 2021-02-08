@@ -52,6 +52,12 @@ const (
 	// If an annotation with this key is found in the OCI spec, it will be
 	// used in the output of Inspect().
 	InspectAnnotationSeccomp = "io.podman.annotations.seccomp"
+	// InspectAnnotationEasySeccomp is used by Inspect to identify containers
+	// with special EasySeccomp-related settings. It is used to populate the
+	// output of the SecurityOpt setting in Inspect.
+	// If an annotation with this key is found in the OCI spec, it will be
+	// used in the output of Inspect().
+	InspectAnnotationEasySeccomp = "io.podman.annotations.easy-seccomp"
 	// InspectAnnotationApparmor is used by Inspect to identify containers
 	// with special Apparmor-related settings. It is used to populate the
 	// output of the SecurityOpt setting.

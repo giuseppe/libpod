@@ -531,6 +531,9 @@ func FillOutSpecGen(s *specgen.SpecGenerator, c *ContainerCLIOpts, args []string
 			case "seccomp":
 				s.SeccompProfilePath = con[1]
 				s.Annotations[define.InspectAnnotationSeccomp] = con[1]
+			case "easyseccomp":
+				s.EasySeccompProfilePath = con[1]
+				s.Annotations[define.InspectAnnotationEasySeccomp] = con[1]
 			// this option is for docker compatibility, it is the same as unmask=ALL
 			case "systempaths":
 				if con[1] == "unconfined" {

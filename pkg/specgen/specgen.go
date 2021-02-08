@@ -284,6 +284,11 @@ type ContainerSecurityConfig struct {
 	// SeccompPolicy determines which seccomp profile gets applied
 	// the container. valid values: empty,default,image
 	SeccompPolicy string `json:"seccomp_policy,omitempty"`
+	// EasySeccompProfilePath is the path to a file containing the
+	// container's EasySeccomp profile.
+	// If not specified, no EasySeccomp profile will be used.
+	// Optional.
+	EasySeccompProfilePath string `json:"easy_seccomp_profile_path,omitempty"`
 	// SeccompProfilePath is the path to a JSON file containing the
 	// container's Seccomp profile.
 	// If not specified, no Seccomp profile will be used.

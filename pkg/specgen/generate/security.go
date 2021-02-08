@@ -164,11 +164,14 @@ func securityConfigureGenerator(s *specgen.SpecGenerator, g *generate.Generator,
 
 	// HANDLE SECCOMP
 	if s.SeccompProfilePath != "unconfined" {
-		seccompConfig, err := getSeccompConfig(s, configSpec, newImage)
+		seccompConfig, annotations, err := getSeccompConfig(s, configSpec, newImage, rtc.Engine.TmpDir)
 		if err != nil {
 			return err
 		}
 		configSpec.Linux.Seccomp = seccompConfig
+		for k, v := range annotations {
+			configSpec.Annotations[k] = v
+		}
 	}
 
 	// Clear default Seccomp profile from Generator for unconfined containers
