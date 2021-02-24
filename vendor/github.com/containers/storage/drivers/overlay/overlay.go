@@ -125,6 +125,48 @@ func init() {
 	graphdriver.Register("overlay2", Init)
 }
 
+func checkAndRecordOverlaySupport(fsMagic graphdriver.FsMagic, home, runhome string) (bool, bool, error) {
+	var usingMetacopy bool
+	var supportsDType bool
+
+	if os.Geteuid() != 0 {
+		return false, false, nil
+	}
+
+	feature := "overlay"
+	overlayCacheResult, overlayCacheText, err := cachedFeatureCheck(runhome, feature)
+	if err == nil {
+		if overlayCacheResult {
+			logrus.Debugf("cached value indicated that overlay is supported")
+		} else {
+			logrus.Debugf("cached value indicated that overlay is not supported")
+		}
+		supportsDType = overlayCacheResult
+		if !supportsDType {
+			return false, false, errors.New(overlayCacheText)
+		}
+	} else {
+		supportsDType, err = supportsOverlay(home, fsMagic, 0, 0)
+		if err != nil {
+			os.Remove(filepath.Join(home, linkDir))
+			os.Remove(home)
+			patherr, ok := err.(*os.PathError)
+			if ok && patherr.Err == syscall.ENOSPC {
+				return false, false, err
+			}
+			err = errors.Wrap(err, "kernel does not support overlay fs")
+			if err2 := cachedFeatureRecord(runhome, feature, false, err.Error()); err2 != nil {
+				return false, false, errors.Wrapf(err2, "error recording overlay not being supported (%v)", err)
+			}
+			return false, false, err
+		}
+		if err = cachedFeatureRecord(runhome, feature, supportsDType, ""); err != nil {
+			return false, false, errors.Wrap(err, "error recording overlay support status")
+		}
+	}
+	return supportsDType, usingMetacopy, nil
+}
+
 // Init returns the a native diff driver for overlay filesystem.
 // If overlay filesystem is not supported on the host, a wrapped graphdriver.ErrNotSupported is returned as error.
 // If an overlay filesystem is not supported over an existing filesystem then a wrapped graphdriver.ErrIncompatibleFS is returned.
@@ -142,8 +184,13 @@ func Init(home string, options graphdriver.Options) (graphdriver.Driver, error) 
 		backingFs = fsName
 	}
 
-	// check if they are running over btrfs, aufs, zfs, overlay, or ecryptfs
-	if opts.mountProgram == "" {
+	if opts.mountProgram != "" {
+		f, err := os.Create(filepath.Join(home, "has-mount-program"))
+		if err == nil {
+			f.Close()
+		}
+	} else {
+		// check if they are running over btrfs, aufs, zfs, overlay, or ecryptfs
 		if opts.forceMask != nil {
 			return nil, errors.New("'force_mask' is supported only with 'mount_program'")
 		}
@@ -172,62 +219,9 @@ func Init(home string, options graphdriver.Options) (graphdriver.Driver, error) 
 	if opts.mountProgram != "" {
 		supportsDType = true
 	} else {
-		feature := "overlay"
-		overlayCacheResult, overlayCacheText, err := cachedFeatureCheck(runhome, feature)
-		if err == nil {
-			if overlayCacheResult {
-				logrus.Debugf("cached value indicated that overlay is supported")
-			} else {
-				logrus.Debugf("cached value indicated that overlay is not supported")
-			}
-			supportsDType = overlayCacheResult
-			if !supportsDType {
-				return nil, errors.New(overlayCacheText)
-			}
-		} else {
-			supportsDType, err = supportsOverlay(home, fsMagic, rootUID, rootGID)
-			if err != nil {
-				os.Remove(filepath.Join(home, linkDir))
-				os.Remove(home)
-				patherr, ok := err.(*os.PathError)
-				if ok && patherr.Err == syscall.ENOSPC {
-					return nil, err
-				}
-				err = errors.Wrap(err, "kernel does not support overlay fs")
-				if err2 := cachedFeatureRecord(runhome, feature, false, err.Error()); err2 != nil {
-					return nil, errors.Wrapf(err2, "error recording overlay not being supported (%v)", err)
-				}
-				return nil, err
-			}
-			if err = cachedFeatureRecord(runhome, feature, supportsDType, ""); err != nil {
-				return nil, errors.Wrap(err, "error recording overlay support status")
-			}
-		}
-
-		feature = fmt.Sprintf("metacopy(%s)", opts.mountOptions)
-		metacopyCacheResult, _, err := cachedFeatureCheck(runhome, feature)
-		if err == nil {
-			if metacopyCacheResult {
-				logrus.Debugf("cached value indicated that metacopy is being used")
-			} else {
-				logrus.Debugf("cached value indicated that metacopy is not being used")
-			}
-			usingMetacopy = metacopyCacheResult
-		} else {
-			usingMetacopy, err = doesMetacopy(home, opts.mountOptions)
-			if err == nil {
-				if usingMetacopy {
-					logrus.Debugf("overlay test mount indicated that metacopy is being used")
-				} else {
-					logrus.Debugf("overlay test mount indicated that metacopy is not being used")
-				}
-				if err = cachedFeatureRecord(runhome, feature, usingMetacopy, ""); err != nil {
-					return nil, errors.Wrap(err, "error recording metacopy-being-used status")
-				}
-			} else {
-				logrus.Infof("overlay test mount did not indicate whether or not metacopy is being used: %v", err)
-				return nil, err
-			}
+		supportsDType, usingMetacopy, err = checkAndRecordOverlaySupport(fsMagic, home, runhome)
+		if err != nil {
+			return nil, err
 		}
 	}
 
@@ -385,6 +379,31 @@ func cachedFeatureRecord(runhome, feature string, supported bool, text string) (
 	return err
 }
 
+func SupportsNativeOverlay(graphroot, rundir string) (bool, error) {
+	home := filepath.Join(graphroot, "overlay")
+	if os.Geteuid() != 0 {
+		return false, nil
+	}
+	if _, err := os.Stat(filepath.Join(home, "has-mount-program")); err == nil {
+		logrus.Debugf("overlay storage already configured with a mount-program")
+		return false, nil
+	}
+	fsMagic, err := graphdriver.GetFSMagic(home)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return false, err
+		}
+		_ = idtools.MkdirAs(home, 0700, 0, 0)
+		fsMagic, err = graphdriver.GetFSMagic(home)
+		if err != nil {
+			return false, err
+		}
+	}
+	runhome := filepath.Join(rundir, filepath.Base(home))
+	supportsDType, _, _ := checkAndRecordOverlaySupport(fsMagic, home, runhome)
+	return supportsDType, nil
+}
+
 func supportsOverlay(home string, homeMagic graphdriver.FsMagic, rootUID, rootGID int) (supportsDType bool, err error) {
 	// We can try to modprobe overlay first
 
@@ -429,7 +448,7 @@ func supportsOverlay(home string, homeMagic graphdriver.FsMagic, rootUID, rootGI
 		_ = idtools.MkdirAs(workDir, 0700, rootUID, rootGID)
 		flags := fmt.Sprintf("lowerdir=%s:%s,upperdir=%s,workdir=%s", lower1Dir, lower2Dir, upperDir, workDir)
 		if len(flags) < unix.Getpagesize() {
-			err := mountFrom(filepath.Dir(home), "overlay", mergedDir, "overlay", 0, flags)
+			err := unix.Mount("overlay", mergedDir, "overlay", 0, flags)
 			if err == nil {
 				logrus.Debugf("overlay test mount with multiple lowers succeeded")
 				return supportsDType, nil
@@ -438,18 +457,18 @@ func supportsOverlay(home string, homeMagic graphdriver.FsMagic, rootUID, rootGI
 		}
 		flags = fmt.Sprintf("lowerdir=%s,upperdir=%s,workdir=%s", lower1Dir, upperDir, workDir)
 		if len(flags) < unix.Getpagesize() {
-			err := mountFrom(filepath.Dir(home), "overlay", mergedDir, "overlay", 0, flags)
+			err := unix.Mount("overlay", mergedDir, "overlay", 0, flags)
 			if err == nil {
 				logrus.Errorf("overlay test mount with multiple lowers failed, but succeeded with a single lower")
 				return supportsDType, errors.Wrap(graphdriver.ErrNotSupported, "kernel too old to provide multiple lowers feature for overlay")
 			}
 			logrus.Debugf("overlay test mount with a single lower failed %v", err)
 		}
-		logrus.Errorf("'overlay' is not supported over %s at %q", backingFs, home)
+		logrus.Debugf("'overlay' is not supported over %s at %q", backingFs, home)
 		return supportsDType, errors.Wrapf(graphdriver.ErrIncompatibleFS, "'overlay' is not supported over %s at %q", backingFs, home)
 	}
 
-	logrus.Error("'overlay' not found as a supported filesystem on this host. Please ensure kernel is new enough and has overlay support loaded.")
+	logrus.Debugf("'overlay' not found as a supported filesystem on this host. Please ensure kernel is new enough and has overlay support loaded.")
 	return supportsDType, errors.Wrap(graphdriver.ErrNotSupported, "'overlay' not found as a supported filesystem on this host. Please ensure kernel is new enough and has overlay support loaded.")
 }
 
