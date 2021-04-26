@@ -380,6 +380,10 @@ type EngineConfig struct {
 	// will refer to the plugin as) mapped to a path, which must point to a
 	// Unix socket that conforms to the Volume Plugin specification.
 	VolumePlugins map[string]string `toml:"volume_plugins,omitempty"`
+
+	// SeccompPlugins is the list of seccomp plugins that conmon will use to
+	// handle seccomp notifications.
+	SeccompPlugins string `toml:"seccomp_plugins,omitempty"`
 }
 
 // SetOptions contains a subset of options in a Config. It's used to indicate if
