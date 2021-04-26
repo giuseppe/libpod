@@ -68,6 +68,7 @@ type ConmonOCIRuntime struct {
 	supportsNoCgroups bool
 	sdNotify          bool
 	enableKeyring     bool
+	seccompPlugins    string
 }
 
 // Make a new Conmon-based OCI runtime with the given options.
@@ -106,6 +107,7 @@ func newConmonOCIRuntime(name string, paths []string, conmonPath string, runtime
 	runtime.noPivot = runtimeCfg.Engine.NoPivotRoot
 	runtime.reservePorts = runtimeCfg.Engine.EnablePortReservation
 	runtime.sdNotify = runtimeCfg.Engine.SDNotify
+	runtime.seccompPlugins = runtimeCfg.Engine.SeccompPlugins
 	runtime.enableKeyring = runtimeCfg.Containers.EnableKeyring
 
 	// TODO: probe OCI runtime for feature and enable automatically if
@@ -859,6 +861,15 @@ func (r *ConmonOCIRuntime) AttachSocketPath(ctr *Container) (string, error) {
 	return filepath.Join(ctr.bundlePath(), "attach"), nil
 }
 
+// SeccompNotifyPath is the path to a single container's attach socket.
+func (r *ConmonOCIRuntime) SeccompNotifyPath(ctr *Container) (string, error) {
+	if ctr == nil {
+		return "", errors.Wrapf(define.ErrInvalidArg, "must provide a valid container to get attach socket path")
+	}
+
+	return filepath.Join(ctr.bundlePath(), "seccomp"), nil
+}
+
 // ExitFilePath is the path to a container's exit file.
 func (r *ConmonOCIRuntime) ExitFilePath(ctr *Container) (string, error) {
 	if ctr == nil {
@@ -1022,6 +1033,10 @@ func (r *ConmonOCIRuntime) createOCIContainer(ctr *Container, restoreOptions *Co
 		args = append(args, "-t")
 	} else if ctr.config.Stdin {
 		args = append(args, "-i")
+	}
+	if ctr.config.Spec.Linux.Seccomp != nil && ctr.config.Spec.Linux.Seccomp.ListenerPath != "" {
+		args = append(args, "--seccomp-notify-socket", ctr.config.Spec.Linux.Seccomp.ListenerPath)
+		args = append(args, "--seccomp-notify-plugins", r.seccompPlugins)
 	}
 
 	if !r.enableKeyring {

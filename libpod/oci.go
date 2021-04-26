@@ -136,6 +136,8 @@ type OCIRuntime interface {
 	// exit, containing the exit code of the container (as a string).
 	// This is the path to that file for a given container.
 	ExitFilePath(ctr *Container) (string, error)
+	// SeccompNotifyPath retrieves the path of the seccomp notify socket
+	SeccompNotifyPath(ctr *Container) (string, error)
 
 	// RuntimeInfo returns verbose information about the runtime.
 	RuntimeInfo() (*define.ConmonInfo, *define.OCIRuntimeInfo, error)

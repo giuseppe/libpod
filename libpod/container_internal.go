@@ -148,6 +148,11 @@ func (c *Container) AttachSocketPath() (string, error) {
 	return c.ociRuntime.AttachSocketPath(c)
 }
 
+// SeccompNotifyPath retrieves the path of the seccomp notify socket
+func (c *Container) SeccompNotifyPath() (string, error) {
+	return c.ociRuntime.SeccompNotifyPath(c)
+}
+
 // exitFilePath gets the path to the container's exit file
 func (c *Container) exitFilePath() (string, error) {
 	return c.ociRuntime.ExitFilePath(c)

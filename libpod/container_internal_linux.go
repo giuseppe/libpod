@@ -744,6 +744,14 @@ func (c *Container) generateSpec(ctx context.Context) (*spec.Spec, error) {
 		}
 	}
 
+	if needsSeccompListener(g.Config.Linux) {
+		path, err := c.SeccompNotifyPath()
+		if err != nil {
+			return nil, err
+		}
+		g.Config.Linux.Seccomp.ListenerPath = path
+	}
+
 	if rootPropagation != "" {
 		logrus.Debugf("set root propagation to %q", rootPropagation)
 		if err := g.SetLinuxRootPropagation(rootPropagation); err != nil {
@@ -2321,4 +2329,20 @@ func (c *Container) createSecretMountDir() error {
 	}
 
 	return err
+}
+
+func needsSeccompListener(config *spec.Linux) bool {
+	seccomp := config.Seccomp
+	if seccomp == nil {
+		return false
+	}
+	if seccomp.DefaultAction == spec.ActNotify {
+		return true
+	}
+	for _, s := range seccomp.Syscalls {
+		if s.Action == spec.ActNotify {
+			return true
+		}
+	}
+	return false
 }

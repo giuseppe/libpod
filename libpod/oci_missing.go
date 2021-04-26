@@ -196,6 +196,11 @@ func (r *MissingRuntime) ExecAttachSocketPath(ctr *Container, sessionID string) 
 	return "", r.printError()
 }
 
+// SeccompNotifyPath is the path to a single container's attach socket.
+func (r *MissingRuntime) SeccompNotifyPath(ctr *Container) (string, error) {
+	return "", r.printError()
+}
+
 // ExitFilePath returns the exit file path for containers.
 // Here, we mimic what ConmonOCIRuntime does, because there is a chance that the
 // container in question is still running happily (config file modified to

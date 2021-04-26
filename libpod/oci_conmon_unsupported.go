@@ -106,6 +106,11 @@ func (r *ConmonOCIRuntime) AttachSocketPath(ctr *Container) (string, error) {
 	return "", define.ErrNotImplemented
 }
 
+// SeccompNotifyPath is not supported on this OS.
+func (r *ConmonOCIRuntime) SeccompNotifyPath(ctr *Container) (string, error) {
+	return "", define.ErrNotImplemented
+}
+
 // ExecAttachSocketPath is not supported on this OS.
 func (r *ConmonOCIRuntime) ExecAttachSocketPath(ctr *Container, sessionID string) (string, error) {
 	return "", define.ErrNotImplemented
