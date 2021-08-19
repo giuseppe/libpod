@@ -5,10 +5,13 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"strconv"
 
 	"github.com/containers/storage/pkg/chunked/compressor"
 	"github.com/containers/storage/pkg/chunked/internal"
 	"github.com/klauspost/compress/zstd"
+	"github.com/klauspost/pgzip"
 	digest "github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
 	"github.com/vbatts/tar-split/archive/tar"
@@ -48,6 +51,83 @@ func isZstdChunkedFrameMagic(data []byte) bool {
 		return false
 	}
 	return bytes.Equal(internal.ZstdChunkedFrameMagic, data[:8])
+}
+
+func readEstargzChunkedManifest(blobStream ImageSourceSeekable, blobSize int64, annotations map[string]string) ([]byte, error) {
+	// information on the format here https://github.com/containerd/stargz-snapshotter/blob/main/docs/stargz-estargz.md
+	footerSize := int64(51)
+	if blobSize <= footerSize {
+		return nil, errors.New("blob too small")
+	}
+	chunk := ImageSourceChunk{
+		Offset: uint64(blobSize - footerSize),
+		Length: uint64(footerSize),
+	}
+	parts, errs, err := blobStream.GetBlobAt([]ImageSourceChunk{chunk})
+	if err != nil {
+		return nil, err
+	}
+	var reader io.ReadCloser
+	select {
+	case r := <-parts:
+		reader = r
+	case err := <-errs:
+		return nil, err
+	}
+	footer := make([]byte, footerSize)
+	if _, err := io.ReadFull(reader, footer); err != nil {
+		return nil, err
+	}
+
+	/* Read the offsetOfTOC
+	   - 10 bytes  gzip header
+	   - 2  bytes  XLEN (length of Extra field) = 26 (4 bytes header + 16 hex digits + len("STARGZ"))
+	   - 2  bytes  Extra: SI1 = 'S', SI2 = 'G'
+	   - 2  bytes  Extra: LEN = 22 (16 hex digits + len("STARGZ"))
+	   - 22 bytes  Extra: subfield = fmt.Sprintf("%016xSTARGZ", offsetOfTOC)
+	   - 5  bytes  flate header: BFINAL = 1(last block), BTYPE = 0(non-compressed block), LEN = 0
+	   - 8  bytes  gzip footer
+	*/
+	tocOffset, err := strconv.ParseInt(string(footer[16:16+22-6]), 16, 64)
+	if err != nil {
+		return nil, errors.Wrap(err, "parse ToC offset")
+	}
+
+	fmt.Printf("Offset is at %v %v\n\n", tocOffset, blobSize-footerSize)
+
+	size := uint64(blobSize - footerSize - tocOffset)
+	// set a reasonable limit
+	if size > (1<<20)*50 {
+		return nil, errors.New("manifest too big")
+	}
+
+	chunk = ImageSourceChunk{
+		Offset: uint64(tocOffset),
+		Length: uint64(size),
+	}
+	parts, errs, err = blobStream.GetBlobAt([]ImageSourceChunk{chunk})
+	if err != nil {
+		return nil, err
+	}
+
+	var tocReader io.ReadCloser
+	select {
+	case r := <-parts:
+		tocReader = r
+	case err := <-errs:
+		return nil, err
+	}
+	defer tocReader.Close()
+
+	r, err := pgzip.NewReader(tocReader)
+	if err != nil {
+		return nil, err
+	}
+	defer r.Close()
+
+	limitReader := io.LimitReader(r, (1<<20)*50)
+
+	return ioutil.ReadAll(limitReader)
 }
 
 // readZstdChunkedManifest reads the zstd:chunked manifest from the seekable stream blobStream.  The blob total size must

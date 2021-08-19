@@ -126,7 +126,7 @@ github.com/containers/common/pkg/umask
 github.com/containers/common/version
 # github.com/containers/conmon v2.0.20+incompatible
 github.com/containers/conmon/runner/config
-# github.com/containers/image/v5 v5.15.0
+# github.com/containers/image/v5 v5.15.0 => /home/gscrivano/src/gopath/src/github.com/containers/image
 github.com/containers/image/v5/copy
 github.com/containers/image/v5/directory
 github.com/containers/image/v5/directory/explicitfilepath
@@ -198,7 +198,7 @@ github.com/containers/psgo/internal/dev
 github.com/containers/psgo/internal/host
 github.com/containers/psgo/internal/proc
 github.com/containers/psgo/internal/process
-# github.com/containers/storage v1.34.0
+# github.com/containers/storage v1.34.0 => /home/gscrivano/src/gopath/src/github.com/containers/storage
 github.com/containers/storage
 github.com/containers/storage/drivers
 github.com/containers/storage/drivers/aufs
@@ -405,7 +405,7 @@ github.com/json-iterator/go
 # github.com/juju/ansiterm v0.0.0-20180109212912-720a0952cc2a
 github.com/juju/ansiterm
 github.com/juju/ansiterm/tabwriter
-# github.com/klauspost/compress v1.13.3
+# github.com/klauspost/compress v1.13.4
 github.com/klauspost/compress
 github.com/klauspost/compress/flate
 github.com/klauspost/compress/fse
@@ -611,7 +611,7 @@ github.com/vbauerster/mpb/v6
 github.com/vbauerster/mpb/v6/cwriter
 github.com/vbauerster/mpb/v6/decor
 github.com/vbauerster/mpb/v6/internal
-# github.com/vbauerster/mpb/v7 v7.0.3
+# github.com/vbauerster/mpb/v7 v7.1.1
 github.com/vbauerster/mpb/v7
 github.com/vbauerster/mpb/v7/cwriter
 github.com/vbauerster/mpb/v7/decor
@@ -674,7 +674,7 @@ golang.org/x/net/proxy
 golang.org/x/net/trace
 # golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 golang.org/x/sync/semaphore
-# golang.org/x/sys v0.0.0-20210616094352-59db8d763f22
+# golang.org/x/sys v0.0.0-20210806184541-e5e7981a1069
 golang.org/x/sys/cpu
 golang.org/x/sys/execabs
 golang.org/x/sys/internal/unsafeheader

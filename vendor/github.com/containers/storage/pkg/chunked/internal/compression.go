@@ -80,6 +80,8 @@ const (
 	ManifestChecksumKey = "io.containers.zstd-chunked.manifest-checksum"
 	ManifestInfoKey     = "io.containers.zstd-chunked.manifest-position"
 
+	ManifestEstargzManifestKey = "containerd.io/snapshot/stargz/toc.digest"
+
 	// ManifestTypeCRFS is a manifest file compatible with the CRFS TOC file.
 	ManifestTypeCRFS = 1
 
