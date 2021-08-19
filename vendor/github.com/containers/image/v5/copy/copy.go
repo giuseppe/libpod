@@ -1322,6 +1322,7 @@ func (ic *imageCopier) copyLayer(ctx context.Context, srcInfo types.BlobInfo, to
 				return true, info
 			}
 			logrus.Debugf("Failed to retrieve partial blob: %v", err)
+			fmt.Printf("ERROR %v\n\n", err)
 			return false, types.BlobInfo{}
 		}(); reused {
 			return blobInfo, cachedDiffID, nil

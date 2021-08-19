@@ -1,11 +1,11 @@
 package chunked
 
 import (
+	archivetar "archive/tar"
 	"bytes"
 	"encoding/binary"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"strconv"
 
 	"github.com/containers/storage/pkg/chunked/compressor"
@@ -93,8 +93,6 @@ func readEstargzChunkedManifest(blobStream ImageSourceSeekable, blobSize int64, 
 		return nil, errors.Wrap(err, "parse ToC offset")
 	}
 
-	fmt.Printf("Offset is at %v %v\n\n", tocOffset, blobSize-footerSize)
-
 	size := uint64(blobSize - footerSize - tocOffset)
 	// set a reasonable limit
 	if size > (1<<20)*50 {
@@ -125,9 +123,22 @@ func readEstargzChunkedManifest(blobStream ImageSourceSeekable, blobSize int64, 
 	}
 	defer r.Close()
 
-	limitReader := io.LimitReader(r, (1<<20)*50)
+	aTar := archivetar.NewReader(r)
 
-	return ioutil.ReadAll(limitReader)
+	header, err := aTar.Next()
+	if err != nil {
+		return nil, err
+	}
+	// set a reasonable limit
+	if header.Size > (1<<20)*50 {
+		return nil, errors.New("manifest too big")
+	}
+
+	manifestUncompressed := make([]byte, header.Size)
+	if _, err := io.ReadFull(aTar, manifestUncompressed); err != nil {
+		return nil, err
+	}
+	return manifestUncompressed, nil
 }
 
 // readZstdChunkedManifest reads the zstd:chunked manifest from the seekable stream blobStream.  The blob total size must

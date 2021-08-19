@@ -37,7 +37,7 @@ const (
 	bigDataKey              = "zstd-chunked-manifest"
 )
 
-type chunkedZstdDiffer struct {
+type chunkedDiffer struct {
 	stream         ImageSourceSeekable
 	manifest       []byte
 	layersMetadata map[string][]internal.ZstdFileMetadata
@@ -149,7 +149,6 @@ func getLayersCache(store storage.Store) (map[string][]internal.ZstdFileMetadata
 
 // GetDiffer returns a differ than can be used with ApplyDiffWithDiffer.
 func GetDiffer(ctx context.Context, store storage.Store, blobSize int64, annotations map[string]string, iss ImageSourceSeekable) (graphdriver.Differ, error) {
-	fmt.Printf("ANNOTATIONS %+v\n", annotations)
 	if _, ok := annotations[internal.ManifestChecksumKey]; ok {
 		return makeZstdChunkedDiffer(ctx, store, blobSize, annotations, iss)
 	}
@@ -159,7 +158,7 @@ func GetDiffer(ctx context.Context, store storage.Store, blobSize int64, annotat
 	return nil, errors.New("blob type not supported for partial retrieval")
 }
 
-func makeZstdChunkedDiffer(ctx context.Context, store storage.Store, blobSize int64, annotations map[string]string, iss ImageSourceSeekable) (*chunkedZstdDiffer, error) {
+func makeZstdChunkedDiffer(ctx context.Context, store storage.Store, blobSize int64, annotations map[string]string, iss ImageSourceSeekable) (*chunkedDiffer, error) {
 	manifest, err := readZstdChunkedManifest(iss, blobSize, annotations)
 	if err != nil {
 		return nil, err
@@ -169,7 +168,7 @@ func makeZstdChunkedDiffer(ctx context.Context, store storage.Store, blobSize in
 		return nil, err
 	}
 
-	return &chunkedZstdDiffer{
+	return &chunkedDiffer{
 		stream:         iss,
 		manifest:       manifest,
 		layersMetadata: layersMetadata,
@@ -177,7 +176,7 @@ func makeZstdChunkedDiffer(ctx context.Context, store storage.Store, blobSize in
 	}, nil
 }
 
-func makeEstargzChunkedDiffer(ctx context.Context, store storage.Store, blobSize int64, annotations map[string]string, iss ImageSourceSeekable) (*chunkedZstdDiffer, error) {
+func makeEstargzChunkedDiffer(ctx context.Context, store storage.Store, blobSize int64, annotations map[string]string, iss ImageSourceSeekable) (*chunkedDiffer, error) {
 	manifest, err := readEstargzChunkedManifest(iss, blobSize, annotations)
 	if err != nil {
 		return nil, err
@@ -187,7 +186,7 @@ func makeEstargzChunkedDiffer(ctx context.Context, store storage.Store, blobSize
 		return nil, err
 	}
 
-	return &chunkedZstdDiffer{
+	return &chunkedDiffer{
 		stream:         iss,
 		manifest:       manifest,
 		layersMetadata: layersMetadata,
@@ -538,7 +537,7 @@ func mergeMissingChunks(missingChunks []missingChunk, target int) []missingChunk
 	return newMissingChunks
 }
 
-func retrieveMissingFiles(input *chunkedZstdDiffer, dest string, dirfd int, missingChunks []missingChunk, options *archive.TarOptions) error {
+func retrieveMissingFiles(input *chunkedDiffer, dest string, dirfd int, missingChunks []missingChunk, options *archive.TarOptions) error {
 	var chunksToRequest []ImageSourceChunk
 	for _, c := range missingChunks {
 		chunksToRequest = append(chunksToRequest, c.RawChunk)
@@ -723,7 +722,7 @@ func parseBooleanPullOption(storeOpts *storage.StoreOptions, name string, def bo
 	return def
 }
 
-func (d *chunkedZstdDiffer) ApplyDiff(dest string, options *archive.TarOptions) (graphdriver.DriverWithDifferOutput, error) {
+func (d *chunkedDiffer) ApplyDiff(dest string, options *archive.TarOptions) (graphdriver.DriverWithDifferOutput, error) {
 	bigData := map[string][]byte{
 		bigDataKey: d.manifest,
 	}
