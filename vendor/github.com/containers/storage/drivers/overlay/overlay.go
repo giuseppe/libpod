@@ -1330,7 +1330,6 @@ func (d *Driver) get(id string, disableShifting bool, options graphdriver.MountO
 			permsKnown = true
 		}
 	}
-
 	// For each lower, resolve its path, and append it and any additional diffN
 	// directories to the lowers list.
 	for _, l := range splitLowers {
@@ -1370,6 +1369,35 @@ func (d *Driver) get(id string, disableShifting bool, options graphdriver.MountO
 			}
 			lower = newpath
 		}
+
+		digest, err := os.Readlink(lower)
+		if err != nil {
+			return "", err
+		}
+		digest = strings.TrimSuffix(strings.TrimPrefix(digest, "../"), "/diff")
+
+		metadataFile := path.Join(d.home, "metadata", digest)
+
+		cmd := exec.Command("writer-json", metadataFile)
+
+		stdout, err := cmd.Output()
+		if err != nil {
+			return "", err
+		}
+
+		descriptor := filepath.Join(d.home, digest, "descriptor")
+
+		if err := ioutil.WriteFile(descriptor, []byte(stdout), 0644); err != nil {
+			return "", err
+		}
+
+		diff := filepath.Join(d.home, digest, "diff")
+
+		options := fmt.Sprintf("descriptor=%s,base=%s", descriptor, path.Join(d.home, "objects"))
+		if err := unix.Mount("composefs", diff, "composefs", 0, options); err != nil {
+			return "", err
+		}
+
 		absLowers = append(absLowers, lower)
 		relLowers = append(relLowers, l)
 		diffN = 1
@@ -1630,6 +1658,7 @@ func (d *Driver) DiffGetter(id string) (graphdriver.FileGetCloser, error) {
 
 // CleanupStagingDirectory cleanups the staging directory.
 func (d *Driver) CleanupStagingDirectory(stagingDirectory string) error {
+	return nil
 	return os.RemoveAll(stagingDirectory)
 }
 
@@ -1645,23 +1674,28 @@ func (d *Driver) ApplyDiffWithDiffer(id, parent string, options *graphdriver.App
 
 	applyDir := ""
 
-	if id == "" {
-		err := os.MkdirAll(d.getStagingDir(), 0700)
-		if err != nil && !os.IsExist(err) {
-			return graphdriver.DriverWithDifferOutput{}, err
-		}
-		applyDir, err = ioutil.TempDir(d.getStagingDir(), "")
-		if err != nil {
-			return graphdriver.DriverWithDifferOutput{}, err
-		}
+	/*
+		if id == "" {
+			err := os.MkdirAll(d.getStagingDir(), 0700)
+			if err != nil && !os.IsExist(err) {
+				return graphdriver.DriverWithDifferOutput{}, err
+			}
+			applyDir, err = ioutil.TempDir(d.getStagingDir(), "")
+			if err != nil {
+				return graphdriver.DriverWithDifferOutput{}, err
+			}
 
-	} else {
-		var err error
-		applyDir, err = d.getDiffPath(id)
-		if err != nil {
-			return graphdriver.DriverWithDifferOutput{}, err
+		} else {
+			var err error
+			applyDir, err = d.getDiffPath(id)
+			if err != nil {
+				return graphdriver.DriverWithDifferOutput{}, err
+			}
 		}
-	}
+	*/
+
+	applyDir = path.Join(d.home, "objects")
+	os.Mkdir(applyDir, 0700)
 
 	logrus.Debugf("Applying differ in %s", applyDir)
 
@@ -1671,13 +1705,24 @@ func (d *Driver) ApplyDiffWithDiffer(id, parent string, options *graphdriver.App
 		IgnoreChownErrors: d.options.ignoreChownErrors,
 		WhiteoutFormat:    d.getWhiteoutFormat(),
 		InUserNS:          userns.RunningInUserNS(),
-	})
+	}, nil)
 	out.Target = applyDir
+
+	out.Metadata = string(out.BigData["zstd-chunked-manifest"])
+
 	return out, err
 }
 
 // ApplyDiffFromStagingDirectory applies the changes using the specified staging directory.
 func (d *Driver) ApplyDiffFromStagingDirectory(id, parent, stagingDirectory string, diffOutput *graphdriver.DriverWithDifferOutput, options *graphdriver.ApplyDiffOpts) error {
+	metadataDir := path.Join(d.home, "metadata")
+	os.Mkdir(metadataDir, 0700)
+	if err := ioutil.WriteFile(path.Join(metadataDir, id), []byte(diffOutput.Metadata), 0644); err != nil {
+		return err
+	}
+
+	return nil
+
 	if filepath.Dir(stagingDirectory) != d.getStagingDir() {
 		return fmt.Errorf("%q is not a staging directory", stagingDirectory)
 	}

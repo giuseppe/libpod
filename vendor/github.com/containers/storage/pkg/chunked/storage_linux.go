@@ -568,6 +568,10 @@ func openFileUnderRoot(name string, dirfd int, flags uint64, mode os.FileMode) (
 func (c *chunkedDiffer) createFileFromCompressedStream(dest string, dirfd int, reader io.Reader, mode os.FileMode, metadata *internal.FileMetadata, options *archive.TarOptions) (err error) {
 	file, err := openFileUnderRoot(metadata.Name, dirfd, newFileFlags, 0)
 	if err != nil {
+		if os.IsExist(err) {
+			_, err = io.Copy(ioutil.Discard, reader)
+			return err
+		}
 		return err
 	}
 	defer func() {
@@ -899,7 +903,7 @@ func parseBooleanPullOption(storeOpts *storage.StoreOptions, name string, def bo
 	return def
 }
 
-func (c *chunkedDiffer) ApplyDiff(dest string, options *archive.TarOptions) (graphdriver.DriverWithDifferOutput, error) {
+func (c *chunkedDiffer) ApplyDiff(dest string, options *archive.TarOptions, differOpts *graphdriver.DifferOptions) (graphdriver.DriverWithDifferOutput, error) {
 	bigData := map[string][]byte{
 		bigDataKey: c.manifest,
 	}
@@ -965,6 +969,40 @@ func (c *chunkedDiffer) ApplyDiff(dest string, options *archive.TarOptions) (gra
 	// hardlinks can point to missing files.  So create them after all files
 	// are retrieved
 	var hardLinks []hardLinkToCreate
+
+	var new []internal.FileMetadata
+
+	hashes := make(map[string]string)
+	for i := range mergedEntries {
+		if mergedEntries[i].Type != TypeReg {
+			continue
+		}
+		if mergedEntries[i].Digest == "" {
+			continue
+		}
+		digest, err := digest.Parse(mergedEntries[i].Digest)
+		if err != nil {
+			return output, err
+		}
+		d := digest.Encoded()
+
+		if hashes[d] != "" {
+			continue
+		}
+		hashes[d] = d
+
+		mergedEntries[i].Name = fmt.Sprintf("%s/%s", d[0:2], d[2:])
+
+		// check if it already exists
+		var stat unix.Stat_t
+		if unix.Fstatat(dirfd, mergedEntries[i].Name, &stat, 0) == nil {
+			continue
+		}
+
+		unix.Mkdirat(dirfd, d[0:2], 0755)
+		new = append(new, mergedEntries[i])
+	}
+	mergedEntries = new
 
 	missingChunksSize, totalChunksSize := int64(0), int64(0)
 	for i, r := range mergedEntries {
