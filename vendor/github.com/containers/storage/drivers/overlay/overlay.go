@@ -1378,31 +1378,28 @@ func (d *Driver) get(id string, disableShifting bool, options graphdriver.MountO
 
 		metadataFile := path.Join(d.home, "metadata", digest)
 
-		cmd := exec.Command("writer-json", metadataFile)
-
-		stdout, err := cmd.Output()
-		if err != nil {
-			return "", err
-		}
-
 		descriptor := filepath.Join(d.home, digest, "descriptor")
 
-		if err := ioutil.WriteFile(descriptor, []byte(stdout), 0644); err != nil {
-			return "", err
+		if _, err := os.Stat(descriptor); err != nil {
+			cmd := exec.Command("writer-json", metadataFile)
+			stdout, err := cmd.Output()
+			if err != nil {
+				return "", err
+			}
+			if err := ioutil.WriteFile(descriptor, []byte(stdout), 0644); err != nil {
+				return "", err
+			}
 		}
 
-		diff := filepath.Join(d.home, digest, "diff")
-
-		options := fmt.Sprintf("descriptor=%s,base=%s", descriptor, path.Join(d.home, "objects"))
-		if err := unix.Mount("composefs", diff, "composefs", 0, options); err != nil {
-			return "", err
-		}
+		lower = fmt.Sprintf("@%s@%s", filepath.Join(d.home, digest, "descriptor"), path.Join(d.home, "objects"))
+		l = lower
 
 		absLowers = append(absLowers, lower)
 		relLowers = append(relLowers, l)
 		diffN = 1
 		_, err = os.Stat(dumbJoin(lower, "..", nameWithSuffix("diff", diffN)))
 		for err == nil {
+			return "", errors.New("not supported")
 			absLowers = append(absLowers, dumbJoin(lower, "..", nameWithSuffix("diff", diffN)))
 			relLowers = append(relLowers, dumbJoin(l, "..", nameWithSuffix("diff", diffN)))
 			diffN++
