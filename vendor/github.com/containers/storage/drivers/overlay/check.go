@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 package overlay
@@ -11,6 +12,7 @@ import (
 	"syscall"
 
 	"github.com/containers/storage/pkg/archive"
+	"github.com/containers/storage/pkg/idtools"
 	"github.com/containers/storage/pkg/ioutils"
 	"github.com/containers/storage/pkg/mount"
 	"github.com/containers/storage/pkg/system"
@@ -216,5 +218,55 @@ func doesVolatile(d string) (bool, error) {
 			logrus.Warnf("Failed to unmount check directory %v: %v", filepath.Join(td, "merged"), err)
 		}
 	}()
+	return true, nil
+}
+
+// supportsIdmappedLowerLayers checks if the kernel supports mounting overlay on top of
+// a idmapped lower layer.
+func supportsIdmappedLowerLayers(home string) (bool, error) {
+	layerDir, err := ioutil.TempDir(home, "compat")
+	if err != nil {
+		return false, err
+	}
+
+	mergedDir := filepath.Join(layerDir, "merged")
+	lowerDir := filepath.Join(layerDir, "lower")
+	lowerMappedDir := filepath.Join(layerDir, "lower-mapped")
+	upperDir := filepath.Join(layerDir, "upper")
+	workDir := filepath.Join(layerDir, "work")
+
+	defer func() {
+		_ = unix.Unmount(mergedDir, unix.MNT_DETACH)
+		_ = os.RemoveAll(layerDir)
+	}()
+
+	_ = idtools.MkdirAs(mergedDir, 0700, 0, 0)
+	_ = idtools.MkdirAs(lowerDir, 0700, 0, 0)
+	_ = idtools.MkdirAs(lowerMappedDir, 0700, 0, 0)
+	_ = idtools.MkdirAs(upperDir, 0700, 0, 0)
+	_ = idtools.MkdirAs(workDir, 0700, 0, 0)
+
+	idmap := []idtools.IDMap{
+		{
+			ContainerID: 0,
+			HostID:      0,
+			Size:        1,
+		},
+	}
+	pid, cleanupFunc, err := createUsernsProcess(idmap, idmap)
+	if err != nil {
+		return false, err
+	}
+	defer cleanupFunc()
+
+	if err := getIDMappedMount(lowerDir, lowerMappedDir, int(pid)); err != nil {
+		return false, errors.Wrapf(err, "create mapped mount")
+	}
+
+	opts := fmt.Sprintf("lowerdir=%s,upperdir=%s,workdir=%s", lowerMappedDir, upperDir, workDir)
+	flags := uintptr(0)
+	if err := unix.Mount("overlay", mergedDir, "overlay", flags, opts); err != nil {
+		return false, err
+	}
 	return true, nil
 }

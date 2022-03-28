@@ -24,6 +24,3 @@ int main() {
 	return 0;
 }
 EOF
-if test $? -eq 0 ; then
-	echo libsubid
-fi
