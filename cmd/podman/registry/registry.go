@@ -45,14 +45,13 @@ func ImageEngine() entities.ImageEngine {
 
 // NewImageEngine is a wrapper for building an ImageEngine to be used for PreRunE functions
 func NewImageEngine(cmd *cobra.Command, args []string) (entities.ImageEngine, error) {
-	if imageEngine == nil {
-		podmanOptions.FlagSet = cmd.Flags()
-		engine, err := infra.NewImageEngine(&podmanOptions)
-		if err != nil {
-			return nil, err
-		}
-		imageEngine = engine
+	podmanOptions.FlagSet = cmd.Flags()
+	engine, err := infra.NewImageEngine(&podmanOptions)
+	if err != nil {
+		return nil, err
 	}
+	imageEngine = engine
+
 	return imageEngine, nil
 }
 

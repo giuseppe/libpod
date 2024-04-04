@@ -191,6 +191,7 @@ func NetFlagsToNetOptions(opts *entities.NetOptions, flags pflag.FlagSet) (*enti
 		if err != nil {
 			return nil, err
 		}
+		network = network[:1]
 
 		ns, networks, options, err := specgen.ParseNetworkFlag(network)
 		if err != nil {

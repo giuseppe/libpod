@@ -9,7 +9,6 @@ import (
 	"io/fs"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 
 	"github.com/containers/common/pkg/cgroups"
@@ -24,14 +23,6 @@ import (
 	flag "github.com/spf13/pflag"
 )
 
-var (
-	// runtimeSync only guards the non-specialized runtime
-	runtimeSync sync.Once
-	// The default GetRuntime() always returns the same object and error
-	runtimeLib *libpod.Runtime
-	runtimeErr error
-)
-
 type engineOpts struct {
 	withFDS  bool
 	reset    bool
@@ -41,15 +32,12 @@ type engineOpts struct {
 
 // GetRuntime generates a new libpod runtime configured by command line options
 func GetRuntime(ctx context.Context, flags *flag.FlagSet, cfg *entities.PodmanConfig) (*libpod.Runtime, error) {
-	runtimeSync.Do(func() {
-		runtimeLib, runtimeErr = getRuntime(ctx, flags, &engineOpts{
-			withFDS:  true,
-			reset:    cfg.IsReset,
-			renumber: cfg.IsRenumber,
-			config:   cfg,
-		})
+	return getRuntime(ctx, flags, &engineOpts{
+		withFDS:  true,
+		reset:    cfg.IsReset,
+		renumber: cfg.IsRenumber,
+		config:   cfg,
 	})
-	return runtimeLib, runtimeErr
 }
 
 func getRuntime(ctx context.Context, fs *flag.FlagSet, opts *engineOpts) (*libpod.Runtime, error) {

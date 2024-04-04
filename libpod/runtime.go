@@ -178,7 +178,6 @@ func NewRuntimeFromConfig(ctx context.Context, userConfig *config.Config, option
 
 func newRuntimeFromConfig(ctx context.Context, conf *config.Config, options ...RuntimeOption) (*Runtime, error) {
 	runtime := new(Runtime)
-
 	if conf.Engine.OCIRuntime == "" {
 		conf.Engine.OCIRuntime = "runc"
 		// If we're running on cgroups v2, default to using crun.

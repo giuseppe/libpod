@@ -139,7 +139,7 @@ func Execute() {
 		}
 	}
 
-	os.Exit(registry.GetExitCode())
+	//	os.Exit(registry.GetExitCode())
 }
 
 // readRemoteCliFlags reads cli flags related to operating podman remotely

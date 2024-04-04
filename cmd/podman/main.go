@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"net/http"
 
 	_ "github.com/containers/podman/v5/cmd/podman/completion"
 	_ "github.com/containers/podman/v5/cmd/podman/farm"
@@ -31,6 +32,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
+	_ "net/http/pprof"
 )
 
 func main() {
@@ -39,6 +41,10 @@ func main() {
 		// had a specific job to do as a subprocess, and it's done.
 		return
 	}
+
+	go func() {
+		http.ListenAndServe("localhost:6060", nil)
+	}()
 
 	if filepath.Base(os.Args[0]) == registry.PodmanSh ||
 		(len(os.Args[0]) > 0 && filepath.Base(os.Args[0][1:]) == registry.PodmanSh) {
@@ -56,8 +62,10 @@ func main() {
 	}
 
 	rootCmd = parseCommands()
-
-	Execute()
+	for i := 0; i < 200; i++ {
+		fmt.Printf("REPEAT %d\n", i+1)
+		Execute()
+	}
 	os.Exit(0)
 }
 
