@@ -1239,13 +1239,6 @@ EOF
 
     grep -E -q "^containers:" /etc/subuid || skip "no IDs allocated for user 'containers'"
 
-    # check if the underlying file system supports idmapped mounts
-    check_dir=$PODMAN_TMPDIR/idmap-check
-    mkdir $check_dir
-    run_podman '?' run --rm --uidmap=0:1000:10000 --rootfs $check_dir:idmap true
-    if [[ "$output" == *"failed to create idmapped mount: invalid argument"* ]]; then
-        skip "idmapped mounts not supported"
-    fi
 
     run_podman image mount $IMAGE
     src="$output"
@@ -1255,6 +1248,17 @@ EOF
     cp -ar "$src" "$romount"
 
     run_podman image unmount $IMAGE
+
+    # the TMPDIR must be accessible by different users as the following tests use different mappings
+    chmod 755 $PODMAN_TMPDIR
+
+    # check if the underlying file system supports idmapped mounts
+    run_podman '?' run --rm --uidmap=0:1000:10000 --rootfs $romount:idmap true
+    if [[ $status -ne 0 ]]; then
+        if [[ "$output" =~ "failed to create idmapped mount: invalid argument" ]]; then
+            skip "idmapped mounts not supported"
+        fi
+    fi
 
     run_podman run --rm --uidmap=0:1000:10000 --rootfs $romount:idmap stat -c %u:%g /bin
     is "$output" "0:0"
@@ -1270,7 +1274,8 @@ EOF
     myvolume=my-volume-$(safename)
     run_podman volume create $myvolume
     mkdir $romount/volume
-    run_podman run --rm --uidmap=0:1000:10000 -v volume:/volume:idmap --rootfs $romount stat -c %u:%g /volume
+    chown 1000:1000 $romount/volume
+    run_podman run --rm --uidmap=0:1000:10000 -v $myvolume:/volume:idmap --rootfs $romount stat -c %u:%g /volume
     is "$output" "0:0"
     run_podman volume rm $myvolume
 
