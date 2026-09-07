@@ -173,16 +173,16 @@ var _ = Describe("run basic podman commands", func() {
 		Expect(run.outputToString()).To(And(ContainSubstring("test1-"+name), ContainSubstring("test2-"+name)))
 	})
 
-	It("Volume should be disabled by command line", func() {
+	It("Volume should be disabled by command line and work with --import-native-ca", func() {
 		skipIfWSL("Requires standard volume handling")
-		skipIfVmtype(define.AppleHvVirt, "Skipped on Apple platform")
-		skipIfVmtype(define.LibKrun, "Skipped on Apple platform")
 
 		name := randomString()
 		i := new(initMachine).withImage(mb.imagePath).withNow()
 
 		// Empty arg forces no volumes
 		i.withVolume("")
+		// test that --import-native-ca also works without volumes
+		i.withImportNativeCA(true)
 		session, err := mb.setName(name).setCmd(i).run()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(session).To(Exit(0))
@@ -198,6 +198,14 @@ var _ = Describe("run basic podman commands", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(findmntVirtiofs).To(Exit(0))
 		Expect(findmntVirtiofs.outputToString()).To(BeEmpty())
+
+		certFilePath := "/etc/pki/ca-trust/source/anchors"
+		certFileName := "host-ca-certs.pem"
+		sshMachine := sshMachine{}
+		sshCertFile, err := mb.setName(name).setCmd(sshMachine.withSSHCommand([]string{"ls", certFilePath})).run()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(sshCertFile).To(Exit(0))
+		Expect(sshCertFile.outputToString()).To(Equal(certFileName))
 	})
 
 	It("Podman ops with port forwarding and gvproxy", func() {

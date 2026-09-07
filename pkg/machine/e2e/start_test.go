@@ -339,27 +339,6 @@ var _ = Describe("podman machine start", func() {
 		Expect(sshCertFile).To(Exit(0))
 		Expect(sshCertFile.outputToString()).To(Equal(certFileName))
 	})
-	It("machine init --now with --import-native-ca with SCP file transfer", func() {
-		skipIfVmtype(define.WSLVirt, "WSL doesn't allow handling volumes (the machine data folder is always mounted")
-
-		// Create a new machine
-		i := initMachine{}
-		initCommand := i.withImage(mb.imagePath).withImportNativeCA(true).withNow()
-		// Don't mount any volume to force the transfer the certificates file via SCP
-		initCommand = initCommand.withVolume("")
-		m := randomString()
-		initSession, err := mb.setName(m).setCmd(initCommand).run()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(initSession).To(Exit(0))
-
-		certFilePath := "/etc/pki/ca-trust/source/anchors"
-		certFileName := "host-ca-certs.pem"
-		sshMachine := sshMachine{}
-		sshCertFile, err := mb.setName(m).setCmd(sshMachine.withSSHCommand([]string{"ls", certFilePath})).run()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(sshCertFile).To(Exit(0))
-		Expect(sshCertFile.outputToString()).To(Equal(certFileName))
-	})
 	It("start interrupted by SIGTERM while waiting for VM start", func() {
 		if !isVmtype(define.AppleHvVirt) && !isVmtype(define.LibKrun) {
 			Skip("SIGTERM interruption is supported on macOS only")
