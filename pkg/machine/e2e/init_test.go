@@ -113,7 +113,7 @@ var _ = Describe("podman machine init", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(session).To(Exit(0))
 
-		inspectBefore, ec, err := mb.toQemuInspectInfo()
+		inspectBefore, ec, err := mb.toInspectInfo()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ec).To(BeZero())
 		Expect(inspectBefore).ToNot(BeEmpty())
@@ -204,7 +204,7 @@ var _ = Describe("podman machine init", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(session).To(Exit(0))
 
-		inspectBefore, ec, err := mb.toQemuInspectInfo()
+		inspectBefore, ec, err := mb.toInspectInfo()
 		Expect(ec).To(BeZero())
 		Expect(inspectBefore).ToNot(BeEmpty())
 		Expect(err).ToNot(HaveOccurred())
@@ -216,7 +216,7 @@ var _ = Describe("podman machine init", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ssession).Should(Exit(0))
 
-		inspectAfter, ec, err := mb.toQemuInspectInfo()
+		inspectAfter, ec, err := mb.toInspectInfo()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ec).To(BeZero())
 		Expect(inspectBefore).ToNot(BeEmpty())
@@ -241,7 +241,7 @@ var _ = Describe("podman machine init", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(session).To(Exit(0))
 
-		inspectBefore, ec, err := mb.toQemuInspectInfo()
+		inspectBefore, ec, err := mb.toInspectInfo()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ec).To(BeZero())
 
@@ -513,7 +513,7 @@ var _ = Describe("podman machine init", func() {
 
 		// Inspecting a non-existent machine should fail
 		// which means it is gone
-		_, ec, err := mb.toQemuInspectInfo()
+		_, ec, err := mb.toInspectInfo()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ec).To(Equal(125))
 

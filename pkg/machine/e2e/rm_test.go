@@ -33,7 +33,7 @@ var _ = Describe("podman machine rm", func() {
 
 		// Inspecting a non-existent machine should fail
 		// which means it is gone
-		_, ec, err := mb.toQemuInspectInfo()
+		_, ec, err := mb.toInspectInfo()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ec).To(Equal(125))
 
@@ -91,7 +91,7 @@ var _ = Describe("podman machine rm", func() {
 		Expect(stopAgain).To(Exit(0))
 
 		// Inspect to be dead sure
-		_, ec, err := mb.toQemuInspectInfo()
+		_, ec, err := mb.toInspectInfo()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ec).To(Equal(125))
 	})
@@ -116,7 +116,7 @@ var _ = Describe("podman machine rm", func() {
 
 		// Inspecting a non-existent machine should fail
 		// which means it is gone
-		_, ec, err := mb.toQemuInspectInfo()
+		_, ec, err := mb.toInspectInfo()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ec).To(Equal(125))
 
