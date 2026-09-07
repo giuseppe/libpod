@@ -198,42 +198,6 @@ var _ = Describe("podman machine init", func() {
 		Expect(sshSession.outputToString()).To(Equal(str))
 	})
 
-	It("simple init with start", func() {
-		i := initMachine{}
-		session, err := mb.setCmd(i.withImage(mb.imagePath)).run()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(session).To(Exit(0))
-
-		inspectBefore, ec, err := mb.toInspectInfo()
-		Expect(ec).To(BeZero())
-		Expect(inspectBefore).ToNot(BeEmpty())
-		Expect(err).ToNot(HaveOccurred())
-		Expect(inspectBefore).ToNot(BeEmpty())
-		Expect(inspectBefore[0].Name).To(Equal(mb.names[0]))
-
-		s := &startMachine{}
-		ssession, err := mb.setCmd(s).setTimeout(time.Minute * 10).run()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(ssession).Should(Exit(0))
-
-		inspectAfter, ec, err := mb.toInspectInfo()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(ec).To(BeZero())
-		Expect(inspectBefore).ToNot(BeEmpty())
-		Expect(inspectAfter).ToNot(BeEmpty())
-		Expect(inspectAfter[0].State).To(Equal(define.Running))
-
-		if isWSL() { // WSL does not use FCOS
-			return
-		}
-
-		// check to see that zincati is masked
-		sshDisk := sshMachine{}
-		zincati, err := mb.setCmd(sshDisk.withSSHCommand([]string{"sudo", "systemctl", "is-enabled", "zincati"})).run()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(zincati.outputToString()).To(ContainSubstring("disabled"))
-	})
-
 	It("simple init with username", func() {
 		i := new(initMachine)
 		remoteUsername := "remoteuser"
@@ -288,6 +252,16 @@ var _ = Describe("podman machine init", func() {
 				subid_count, count_min, file,
 			)
 		}
+
+		if isWSL() { // WSL does not use FCOS
+			return
+		}
+
+		// check to see that zincati is masked
+		sshDisk := sshMachine{}
+		zincati, err := mb.setCmd(sshDisk.withSSHCommand([]string{"sudo", "systemctl", "is-enabled", "zincati"})).run()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(zincati.outputToString()).To(ContainSubstring("disabled"))
 	})
 
 	It("machine init with cpus, disk size, memory, timezone", func() {
