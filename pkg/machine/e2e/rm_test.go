@@ -71,31 +71,6 @@ var _ = Describe("podman machine rm", func() {
 		Expect(sysConnOutput.outputToString()).To(ContainSubstring(name2 + "-root--true"))
 	})
 
-	It("Remove running machine", func() {
-		name := randomString()
-		i := new(initMachine)
-		session, err := mb.setName(name).setCmd(i.withImage(mb.imagePath).withNow()).run()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(session).To(Exit(0))
-		rm := new(rmMachine)
-
-		// Removing a running machine should fail
-		stop, err := mb.setCmd(rm).run()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(stop).To(Exit(125))
-		Expect(stop.errorToString()).To(ContainSubstring(fmt.Sprintf("vm \"%s\" cannot be destroyed", name)))
-
-		// Removing again with force
-		stopAgain, err := mb.setCmd(rm.withForce()).run()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(stopAgain).To(Exit(0))
-
-		// Inspect to be dead sure
-		_, ec, err := mb.toInspectInfo()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(ec).To(Equal(125))
-	})
-
 	It("machine rm --save-ignition --save-image", func() {
 		i := new(initMachine)
 		session, err := mb.setCmd(i.withFakeImage(mb)).run()

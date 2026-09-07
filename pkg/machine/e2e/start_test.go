@@ -126,7 +126,7 @@ var _ = Describe("podman machine start", func() {
 		Expect(connectionPorts2).To(HaveEach(inspectPort2))
 	})
 
-	It("start only starts specified machine", func() {
+	It("start only starts specified machine and remove running machine", func() {
 		j := initMachine{}
 		dontstartme := randomString()
 		session2, err := mb.setName(dontstartme).setCmd(j.withFakeImage(mb)).run()
@@ -163,6 +163,25 @@ var _ = Describe("podman machine start", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(inspectSession2).To(Exit(0))
 		Expect(inspectSession2.outputToString()).To(Not(Equal(define.Running)))
+
+		rm := new(rmMachine)
+		// Removing a running machine should fail
+		stop, err := mb.setName(startme).setCmd(rm).run()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(stop).To(Exit(125))
+		Expect(stop.errorToString()).To(ContainSubstring(fmt.Sprintf("vm \"%s\" cannot be destroyed", startme)))
+
+		// Removing again with force should work
+		stopAgain, err := mb.setCmd(rm.withForce()).run()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(stopAgain).To(Exit(0))
+
+		// Inspect to be sure it is gone
+		inspect3 := new(inspectMachine)
+		inspectSession3, err := mb.setName(startme).setCmd(inspect3).run()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(inspectSession3).To(Exit(125))
+		Expect(inspectSession3.errorToString()).To(ContainSubstring("VM does not exist"))
 	})
 
 	It("start two machines in parallel", func() {
