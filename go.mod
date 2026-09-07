@@ -41,7 +41,7 @@ require (
 	github.com/mdlayher/vsock v1.3.0
 	github.com/moby/docker-image-spec v1.3.1
 	github.com/moby/moby/api v1.56.0
-	github.com/moby/moby/client v0.5.1
+	github.com/moby/moby/client v0.6.0
 	github.com/moby/sys/capability v0.4.0
 	github.com/moby/sys/user v0.4.1
 	github.com/moby/term v0.5.2
