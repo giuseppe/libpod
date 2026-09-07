@@ -19,42 +19,6 @@ import (
 )
 
 var _ = Describe("podman machine start", func() {
-	It("start simple machine", func() {
-		i := new(initMachine)
-		session, err := mb.setCmd(i.withImage(mb.imagePath)).run()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(session).To(Exit(0))
-		s := new(startMachine)
-		startSession, err := mb.setCmd(s).run()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(startSession).To(Exit(0))
-
-		info, ec, err := mb.toInspectInfo()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(ec).To(BeZero())
-		Expect(info[0].State).To(Equal(define.Running))
-
-		stop := new(stopMachine)
-		stopSession, err := mb.setCmd(stop).run()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(stopSession).To(Exit(0))
-
-		// suppress output
-		startSession, err = mb.setCmd(s.withNoInfo()).run()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(startSession).To(Exit(0))
-		Expect(startSession.outputToString()).ToNot(ContainSubstring("API forwarding"))
-
-		stopSession, err = mb.setCmd(stop).run()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(stopSession).To(Exit(0))
-
-		startSession, err = mb.setCmd(s.withQuiet()).run()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(startSession).To(Exit(0))
-		Expect(startSession.outputToStringSlice()).To(HaveLen(1))
-	})
-
 	It("bad start name", func() {
 		i := startMachine{}
 		reallyLongName := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -73,9 +37,11 @@ var _ = Describe("podman machine start", func() {
 		Expect(session).To(Exit(0))
 
 		s := new(startMachine)
-		startSession, err := mb.setCmd(s).run()
+		// suppress output with no info and check for that.
+		startSession, err := mb.setCmd(s.withNoInfo()).run()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(startSession).To(Exit(0))
+		Expect(startSession.outputToString()).ToNot(ContainSubstring("API forwarding"))
 
 		info, ec, err := mb.toInspectInfo()
 		Expect(err).ToNot(HaveOccurred())
@@ -115,10 +81,12 @@ var _ = Describe("podman machine start", func() {
 		defer listener.Close()
 
 		s := new(startMachine)
-		startSession, err := mb.setCmd(s).run()
+		// Also test with quiet to ensure no extra stout is logged but the error is still logged.
+		startSession, err := mb.setCmd(s.withQuiet()).run()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(startSession).To(Exit(0))
 		Expect(startSession.errorToString()).To(ContainSubstring("detected port conflict on machine ssh port"))
+		Expect(startSession.outputToString()).To(Equal(fmt.Sprintf("Machine %q started successfully", mb.name)))
 
 		inspect2 := new(inspectMachine)
 		inspectSession2, err := mb.setCmd(inspect2.withFormat("{{.SSHConfig.Port}}")).run()
