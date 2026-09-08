@@ -26,7 +26,7 @@ import (
 var originalHomeDir = os.Getenv("HOME")
 
 const (
-	defaultTimeout = 10 * time.Minute
+	defaultTimeout = 3 * time.Minute
 )
 
 type machineCommand interface {
@@ -148,11 +148,6 @@ func (m *machineTestBuilder) setCmd(mc machineCommand) *machineTestBuilder {
 // setStdin sets the stdin for the next command to be run
 func (m *machineTestBuilder) setStdin(data io.Reader) *machineTestBuilder {
 	m.stdin = data
-	return m
-}
-
-func (m *machineTestBuilder) setTimeout(timeout time.Duration) *machineTestBuilder { //nolint: unparam
-	m.timeout = timeout
 	return m
 }
 

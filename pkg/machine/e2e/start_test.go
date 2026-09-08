@@ -143,7 +143,7 @@ var _ = Describe("podman machine start", func() {
 		// Provide a buffer as stdin to simulate non-tty input (e.g., piped or redirected stdin)
 		// When stdin is not a tty, the command should not prompt for connection updates
 		stdinBuf := bytes.NewBufferString("n\n")
-		session3, err := mb.setName(startme).setCmd(s).setTimeout(time.Minute * 10).setStdin(stdinBuf).run()
+		session3, err := mb.setName(startme).setCmd(s).setStdin(stdinBuf).run()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(session3).Should(Exit(0))
 		// Verify that the prompt message did not appear (no prompting when stdin is not a tty)
@@ -204,7 +204,7 @@ var _ = Describe("podman machine start", func() {
 			defer GinkgoRecover()
 			defer wg.Done()
 			s := &startMachine{}
-			startSession1, err = mb.setName(machine1).setCmd(s.withUpdateConnection(new(false))).setTimeout(time.Minute * 10).run()
+			startSession1, err = mb.setName(machine1).setCmd(s.withUpdateConnection(new(false))).run()
 			Expect(err).ToNot(HaveOccurred())
 		}()
 		go func() {
@@ -217,7 +217,7 @@ var _ = Describe("podman machine start", func() {
 			// second run.
 			nmb, err := newMB()
 			Expect(err).ToNot(HaveOccurred())
-			startSession2, err = nmb.setName(machine2).setCmd(s.withUpdateConnection(new(false))).setTimeout(time.Minute * 10).run()
+			startSession2, err = nmb.setName(machine2).setCmd(s.withUpdateConnection(new(false))).run()
 			Expect(err).ToNot(HaveOccurred())
 		}()
 		wg.Wait()

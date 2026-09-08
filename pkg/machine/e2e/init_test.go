@@ -416,7 +416,7 @@ var _ = Describe("podman machine init", func() {
 		Expect(session).To(Exit(0))
 
 		s := &startMachine{}
-		ssession, err := mb.setCmd(s).setTimeout(time.Minute * 10).run()
+		ssession, err := mb.setCmd(s).run()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ssession).Should(Exit(0))
 
@@ -438,7 +438,7 @@ var _ = Describe("podman machine init", func() {
 		Expect(session).To(Exit(0))
 
 		s := &startMachine{}
-		ssession, err := mb.setCmd(s).setTimeout(time.Minute * 10).run()
+		ssession, err := mb.setCmd(s).run()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ssession).Should(Exit(0))
 
@@ -580,7 +580,7 @@ var _ = Describe("podman machine init", func() {
 		Expect(session).To(Exit(0))
 
 		s := &startMachine{}
-		ssession, err := mb.setCmd(s).setTimeout(time.Minute * 10).run()
+		ssession, err := mb.setCmd(s).run()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ssession).Should(Exit(0))
 
@@ -631,7 +631,7 @@ var _ = Describe("podman machine init", func() {
 		Expect(session).To(Exit(0))
 
 		s := &startMachine{}
-		ssession, err := mb.setCmd(s).setTimeout(time.Minute * 10).run()
+		ssession, err := mb.setCmd(s).run()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ssession).Should(Exit(0))
 
