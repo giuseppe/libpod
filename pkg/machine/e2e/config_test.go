@@ -26,7 +26,7 @@ import (
 var originalHomeDir = os.Getenv("HOME")
 
 const (
-	defaultTimeout = 10 * time.Minute
+	defaultTimeout = 3 * time.Minute
 )
 
 type machineCommand interface {
@@ -151,14 +151,9 @@ func (m *machineTestBuilder) setStdin(data io.Reader) *machineTestBuilder {
 	return m
 }
 
-func (m *machineTestBuilder) setTimeout(timeout time.Duration) *machineTestBuilder { //nolint: unparam
-	m.timeout = timeout
-	return m
-}
-
-// toQemuInspectInfo is only for inspecting qemu machines.  Other providers will need
+// toInspectInfo is only for inspecting qemu machines.  Other providers will need
 // to make their own.
-func (m *machineTestBuilder) toQemuInspectInfo() ([]machine.InspectInfo, int, error) {
+func (m *machineTestBuilder) toInspectInfo() ([]machine.InspectInfo, int, error) {
 	args := []string{"machine", "inspect"}
 	args = append(args, m.names...)
 	session, err := runWrapper(m.podmanBinary, args, nil, defaultTimeout, true)

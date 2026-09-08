@@ -145,18 +145,44 @@ var _ = Describe("run basic podman commands", func() {
 			Expect(findmnt).To(Exit(0))
 			Expect(findmnt.outputToString()).To(ContainSubstring("virtiofs"))
 		}
+
+		// Test build context support
+		mainContextDir := GinkgoT().TempDir()
+		cfile := filepath.Join(mainContextDir, "test1")
+		err = os.WriteFile(cfile, []byte("test1-"+name+"\n"), 0o644)
+		Expect(err).ToNot(HaveOccurred())
+
+		additionalContextDir := GinkgoT().TempDir()
+		cfile = filepath.Join(additionalContextDir, "test2")
+		err = os.WriteFile(cfile, []byte("test2-"+name+"\n"), 0o644)
+		Expect(err).ToNot(HaveOccurred())
+
+		cfile = filepath.Join(mainContextDir, "Containerfile")
+		err = os.WriteFile(cfile, []byte("FROM "+TESTIMAGE+"\nCOPY test1 /\nCOPY --from=test-context test2 /\n"), 0o644)
+		Expect(err).ToNot(HaveOccurred())
+
+		bm = basicMachine{}
+		build, err = mb.setCmd(bm.withPodmanCommand([]string{"build", "-t", name, "--build-context", "test-context=" + additionalContextDir, mainContextDir})).run()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(build).To(Exit(0))
+		Expect(build.outputToString()).To(ContainSubstring("COMMIT"))
+
+		run, err = mb.setCmd(bm.withPodmanCommand([]string{"run", name, "cat", "/test1", "/test2"})).run()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(run).To(Exit(0))
+		Expect(run.outputToString()).To(And(ContainSubstring("test1-"+name), ContainSubstring("test2-"+name)))
 	})
 
-	It("Volume should be disabled by command line", func() {
+	It("Volume should be disabled by command line and work with --import-native-ca", func() {
 		skipIfWSL("Requires standard volume handling")
-		skipIfVmtype(define.AppleHvVirt, "Skipped on Apple platform")
-		skipIfVmtype(define.LibKrun, "Skipped on Apple platform")
 
 		name := randomString()
 		i := new(initMachine).withImage(mb.imagePath).withNow()
 
 		// Empty arg forces no volumes
 		i.withVolume("")
+		// test that --import-native-ca also works without volumes
+		i.withImportNativeCA(true)
 		session, err := mb.setName(name).setCmd(i).run()
 		Expect(err).ToNot(HaveOccurred())
 		Expect(session).To(Exit(0))
@@ -172,6 +198,14 @@ var _ = Describe("run basic podman commands", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(findmntVirtiofs).To(Exit(0))
 		Expect(findmntVirtiofs.outputToString()).To(BeEmpty())
+
+		certFilePath := "/etc/pki/ca-trust/source/anchors"
+		certFileName := "host-ca-certs.pem"
+		sshMachine := sshMachine{}
+		sshCertFile, err := mb.setName(name).setCmd(sshMachine.withSSHCommand([]string{"ls", certFilePath})).run()
+		Expect(err).ToNot(HaveOccurred())
+		Expect(sshCertFile).To(Exit(0))
+		Expect(sshCertFile.outputToString()).To(Equal(certFileName))
 	})
 
 	It("Podman ops with port forwarding and gvproxy", func() {
@@ -258,44 +292,6 @@ var _ = Describe("run basic podman commands", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(ls).To(Exit(0))
 		Expect(ls.outputToString()).To(ContainSubstring(testString))
-	})
-
-	It("podman build contexts", func() {
-		name := randomString()
-		i := new(initMachine)
-		session, err := mb.setName(name).setCmd(i.withImage(mb.imagePath).withNow()).run()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(session).To(Exit(0))
-
-		mainContextDir := GinkgoT().TempDir()
-		cfile := filepath.Join(mainContextDir, "test1")
-		err = os.WriteFile(cfile, []byte(name), 0o644)
-		Expect(err).ToNot(HaveOccurred())
-
-		additionalContextDir := GinkgoT().TempDir()
-		cfile = filepath.Join(additionalContextDir, "test2")
-		err = os.WriteFile(cfile, []byte(name), 0o644)
-		Expect(err).ToNot(HaveOccurred())
-
-		cfile = filepath.Join(mainContextDir, "Containerfile")
-		err = os.WriteFile(cfile, []byte("FROM "+TESTIMAGE+"\nCOPY test1 /\nCOPY --from=test-context test2 /\n"), 0o644)
-		Expect(err).ToNot(HaveOccurred())
-
-		bm := basicMachine{}
-		build, err := mb.setCmd(bm.withPodmanCommand([]string{"build", "-t", name, "--build-context", "test-context=" + additionalContextDir, mainContextDir})).run()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(build).To(Exit(0))
-		Expect(build.outputToString()).To(ContainSubstring("COMMIT"))
-
-		run, err := mb.setCmd(bm.withPodmanCommand([]string{"run", name, "cat", "/test1"})).run()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(run).To(Exit(0))
-		Expect(build.outputToString()).To(ContainSubstring(name))
-
-		run, err = mb.setCmd(bm.withPodmanCommand([]string{"run", name, "cat", "/test2"})).run()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(run).To(Exit(0))
-		Expect(build.outputToString()).To(ContainSubstring(name))
 	})
 
 	It("CVE-2025-6032 regression test - HTTP", func() {
