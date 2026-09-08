@@ -24,12 +24,11 @@ var ErrVSockRegistryEntryExists = errors.New("registry entry already exists")
 // to signal readiness over the hvsock. Without it, a guest that stays alive
 // but never connects (stuck boot, corrupted image, ignition hang) hangs the
 // calling `podman machine init`/`start` command forever: sockets.
-// ListenAndWaitOnSocket, which this waits on, has no timeout of its own,
-// confirmed by testing it directly against a real, unconnected net.Listener.
-// 10 real successful `podman machine init --now` runs from Podman's own
-// Hyper-V CI clustered between 15.8s and 19.4s, so 30s is headroom over a
-// normal healthy boot without leaving a stuck wait hanging for minutes.
-const readyTimeout = 30 * time.Second
+// The timeout must be high enough to even pass on slow CI systems.
+// On our current github action runners a podman machine init commands takes
+// around 50 seconds so lets use 90 seconds as timeout for now which should
+// be enough.
+const readyTimeout = 90 * time.Second
 
 const (
 	// HvsockMachineName is the string identifier for the machine name in a registry entry
