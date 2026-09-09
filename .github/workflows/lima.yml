@@ -63,6 +63,12 @@ jobs:
         with:
           version: v2.1.1
 
+      # lima action setup fails sometimes with "chown: cannot access '/dev/kvm': No such file or directory"
+      # Add logs to debug this error and see if the module loading failed somehow
+      - name: "Run dmesg on failure"
+        if: failure()
+        run: sudo dmesg
+
       # NOTE, we are not using a cache here as documented in the lima action.
       # This is because our VM images are above 5GB and the total github limit is 10 GB which means
       # it will clean out the other image basically right away making the cache useless for other tasks.
