@@ -20,9 +20,6 @@ function teardown() {
 # podman machine is finicky. Assume we can't run it, but see below for more.
 can_run_podman_machine=
 
-# podman stats, too
-can_run_stats=
-
 # Main test loop. Recursively runs 'podman [subcommand] help', looks for:
 #    > '[command]', which indicates, recurse; or
 #    > '--format', in which case we
@@ -38,9 +35,6 @@ function check_subcommand() {
         # Human-readable podman command string, with multiple spaces collapsed
         # Special case: 'podman machine' can only be run under ideal conditions
         if [[ "$cmd" = "machine" ]] && [[ -z "$can_run_podman_machine" ]]; then
-            continue
-        fi
-        if [[ "$cmd" = "stats" ]] && [[ -z "$can_run_stats" ]]; then
             continue
         fi
 
@@ -164,6 +158,10 @@ pod inspect       | $podname
 
 events            | --stream=false --events-backend=file
 system events     | --stream=false --events-backend=file
+
+container stats   | --no-stream
+pod stats         | --no-stream
+stats             | --no-stream
 "
 
 
@@ -177,16 +175,6 @@ system events     | --stream=false --events-backend=file
         can_run_podman_machine=true
         extra_args_table+="
 machine inspect   | $machinename
-"
-    fi
-
-    # Similarly, 'stats' cannot run rootless under cgroups v1
-    if ! is_rootless || is_cgroupsv2; then
-        can_run_stats=true
-        extra_args_table+="
-container stats   | --no-stream
-pod stats         | --no-stream
-stats             | --no-stream
 "
     fi
 

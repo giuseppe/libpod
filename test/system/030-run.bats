@@ -80,12 +80,7 @@ EOF
 # bats test_tags=ci:parallel
 @test "podman run --memory=0 runtime option" {
     run_podman run --memory=0 --rm $IMAGE echo hello
-    if is_rootless && ! is_cgroupsv2; then
-        is "${lines[0]}" "Resource limits are not supported and ignored on cgroups V1 rootless systems" "--memory is not supported"
-        is "${lines[1]}" "hello" "--memory is ignored"
-    else
-        is "$output" "hello" "failed to run when --memory is set to 0"
-    fi
+    is "$output" "hello" "failed to run when --memory is set to 0"
 }
 
 # 'run --preserve-fds' passes a number of additional file descriptors into the container
@@ -1177,17 +1172,10 @@ EOF
     local dev_maj_min=$(stat -c %Hr:%Lr /dev/nullb0)
 
     # this test is a triple check on blkio flags since they seem to sneak by the tests
-    if is_cgroupsv2; then
-        run_podman run -dt --device-read-bps=/dev/nullb0:1M $IMAGE top
-        cid=$output
-        run_podman exec -it $output cat /sys/fs/cgroup/io.max
-        is "$output" ".*$dev_maj_min rbps=1048576 wbps=max riops=max wiops=max" "throttle devices passed successfully.*"
-    else
-        run_podman run -dt --device-read-bps=/dev/nullb0:1M $IMAGE top
-        cid=$output
-        run_podman exec -it $output cat /sys/fs/cgroup/blkio/blkio.throttle.read_bps_device
-        is "$output" ".*$dev_maj_min 1048576" "throttle devices passed successfully.*"
-    fi
+    run_podman run -dt --device-read-bps=/dev/nullb0:1M $IMAGE top
+    cid=$output
+    run_podman exec -it $output cat /sys/fs/cgroup/io.max
+    is "$output" ".*$dev_maj_min rbps=1048576 wbps=max riops=max wiops=max" "throttle devices passed successfully.*"
     run_podman container rm -f -t0 $cid
 }
 

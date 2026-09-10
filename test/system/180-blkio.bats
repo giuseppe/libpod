@@ -47,23 +47,10 @@ function teardown() {
     echo bfq > /sys/block/$(basename ${lodevice})/queue/scheduler
 
     # run podman
-    if is_cgroupsv2; then
-        if [ ! -f /sys/fs/cgroup/system.slice/io.bfq.weight ]; then
-            skip "Kernel does not support BFQ IO scheduler"
-        fi
-        run_podman run --device ${lodevice}:${lodevice} --blkio-weight-device ${lodevice}:123 --rm $IMAGE \
-            /bin/sh -c "cat /sys/fs/cgroup/\$(sed -e 's/0:://' < /proc/self/cgroup)/io.bfq.weight"
-        is "${lines[1]}" "${lomajmin}\s\+123"
-    else
-        if [ ! -f /sys/fs/cgroup/blkio/system.slice/blkio.bfq.weight_device ]; then
-            skip "Kernel does not support BFQ IO scheduler"
-        fi
-        if [ $(podman_runtime) = "crun" ]; then
-            # As of crun 1.2, crun doesn't support blkio.bfq.weight_device
-            skip "crun doesn't support blkio.bfq.weight_device"
-        fi
-        run_podman run --device ${lodevice}:${lodevice} --blkio-weight-device ${lodevice}:123 --rm $IMAGE \
-            /bin/sh -c "cat /sys/fs/cgroup/blkio/blkio.bfq.weight_device"
-        is "${lines[1]}" "${lomajmin}\s\+123"
+    if [ ! -f /sys/fs/cgroup/system.slice/io.bfq.weight ]; then
+        skip "Kernel does not support BFQ IO scheduler"
     fi
+    run_podman run --device ${lodevice}:${lodevice} --blkio-weight-device ${lodevice}:123 --rm $IMAGE \
+        /bin/sh -c "cat /sys/fs/cgroup/\$(sed -e 's/0:://' < /proc/self/cgroup)/io.bfq.weight"
+    is "${lines[1]}" "${lomajmin}\s\+123"
 }

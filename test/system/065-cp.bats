@@ -157,10 +157,6 @@ load helpers
 }
 
 @test "podman cp file from/to host while --pid=host" {
-    if is_rootless && ! is_cgroupsv2; then
-        skip "'podman cp --pid=host' (rootless) only works with cgroups v2"
-    fi
-
     srcdir=$PODMAN_TMPDIR/cp-pid-equals-host
     mkdir -p $srcdir
     touch $srcdir/hostfile
