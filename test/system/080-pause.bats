@@ -10,10 +10,6 @@ load helpers.systemd
 # as this command takes locks of all containers and parallel containers may
 # block for a while.
 @test "podman pause/unpause" {
-    if is_rootless && ! is_cgroupsv2; then
-        skip "'podman pause' (rootless) only works with cgroups v2"
-    fi
-
     cname="c-$(safename)"
     run_podman run -d --name $cname $IMAGE \
                sh -c 'while :;do date +%s;sleep 1;done'
@@ -68,10 +64,6 @@ load helpers.systemd
 
 # CANNOT BE PARALLELIZED! (because of unpause --all)
 @test "podman unpause --all" {
-    if is_rootless && ! is_cgroupsv2; then
-        skip "'podman pause' (rootless) only works with cgroups v2"
-    fi
-
     cname="c-$(safename)"
     cname_notrunning="c-notrunning-$(safename)"
 
@@ -91,10 +83,6 @@ load helpers.systemd
 
 # bats test_tags=ci:parallel
 @test "podman pause/unpause with HealthCheck interval" {
-    if is_rootless && ! is_cgroupsv2; then
-        skip "'podman pause' (rootless) only works with cgroups v2"
-    fi
-
     local ctrname="c-$(safename)"
     local msg="healthmsg-$(random_string)"
 
